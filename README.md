@@ -58,4 +58,4 @@ GET  /clients            # List clients
 
 ## License
 
-MIT
+[MIT](LICENSE)
