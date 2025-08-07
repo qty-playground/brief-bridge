@@ -86,6 +86,7 @@ Based on `docs/clean-architecture-structure.md`, create:
 - Domain value objects (basic implementations)
 - Repository interfaces (in domain layer)
 - Repository implementations (in infrastructure layer)
+- FastAPI routers (NOT endpoints in main.py)
 - Basic step definition implementations
 
 **Example Implementation:**
@@ -105,10 +106,23 @@ class Client:
         client._fake_status = status  # Hardcoded - not real business logic
         return client
 
-# tests/{feature}/given_steps.py
-@given('client "{client_id}" exists with status "{status}" and availability "{availability}"')
-def given_client_exists(client_id, status, availability, client_repository):
-    fake_client = Client.create_fake(client_id, status, availability)
+# brief_bridge/infrastructure/fastapi/routers/clients.py
+from fastapi import APIRouter
+router = APIRouter()
+
+@router.post("/register")
+async def register_client(request: RegisterClientRequest):
+    # Hardcoded fake response for Stage 1
+    return {"client_id": "fake-uuid", "status": "ONLINE"}
+
+# brief_bridge/main.py - ONLY include router, no business endpoints
+from .infrastructure.fastapi.routers import clients
+app.include_router(clients.router, prefix="/clients", tags=["clients"])
+
+# tests/{feature}/step_definitions.py
+@given(parsers.parse('client "{client_id}" exists with status "{status}"'))
+def given_client_exists(context, client_id, status, client_repository):
+    fake_client = Client.create_fake(client_id, status, "IDLE")
     asyncio.run(client_repository.save(fake_client))
 ```
 
@@ -285,6 +299,7 @@ pytest  # Run complete test suite
 - ❌ Run full test suite during TDD cycle
 - ❌ Implement business rules before GREEN Stage 2
 - ❌ Add features not required by current scenario
+- ❌ Add business endpoints directly to main.py (use routers instead)
 
 ## AI Assistant Behavior Guidelines
 

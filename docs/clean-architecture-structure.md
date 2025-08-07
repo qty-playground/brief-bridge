@@ -5,7 +5,7 @@
 ```
 brief_bridge/
 ├── __init__.py
-├── main.py                          # FastAPI 應用程式進入點
+├── main.py                          # FastAPI 應用程式進入點 (只負責配置和路由包含)
 │
 ├── domain/                          # 領域層 (Domain Layer)
 │   ├── __init__.py
@@ -146,12 +146,82 @@ Infrastructure → Application → Domain
 - Domain Layer 不依賴任何外層
 - 通過依賴反轉原則 (DIP) 處理外部依賴
 
+## FastAPI 應用程式組織
+
+### main.py 職責
+`main.py` 應該**只**負責：
+- FastAPI 應用程式初始化和配置
+- Lifespan 事件處理
+- Router 註冊和包含
+- 全域中介軟體設定
+- **不應包含任何業務 endpoints**
+
+**正確的 main.py 結構：**
+```python
+# brief_bridge/main.py
+from fastapi import FastAPI
+from .infrastructure.fastapi.routers import clients, ai_assistant, system
+
+app = FastAPI(
+    title="Brief Bridge",
+    description="...",
+    version="0.1.0"
+)
+
+# 註冊路由
+app.include_router(clients.router, prefix="/clients", tags=["clients"])
+app.include_router(ai_assistant.router, prefix="/commands", tags=["ai-assistant"])
+app.include_router(system.router, prefix="/system", tags=["system"])
+
+# 只保留基本的 health check 和根路徑
+@app.get("/health")
+async def health_check(): ...
+
+@app.get("/")
+async def root(): ...
+```
+
+### Router 組織方式
+每個 router 檔案負責特定的業務領域：
+
+**clients.py** - 客戶端相關端點：
+```python
+# brief_bridge/infrastructure/fastapi/routers/clients.py
+from fastapi import APIRouter
+
+router = APIRouter()
+
+@router.post("/register")
+async def register_client(): ...
+
+@router.get("/")
+async def list_clients(): ...
+
+@router.post("/{client_id}/heartbeat")
+async def client_heartbeat(): ...
+```
+
+**ai_assistant.py** - AI 助手相關端點：
+```python
+# brief_bridge/infrastructure/fastapi/routers/ai_assistant.py
+from fastapi import APIRouter
+
+router = APIRouter()
+
+@router.post("/")
+async def submit_command(): ...
+
+@router.get("/{command_id}")
+async def get_command_result(): ...
+```
+
 ## 關鍵設計原則
 
 1. **依賴反轉**: Repository 介面定義在 Domain 層，實作在 Infrastructure 層
 2. **介面隔離**: 每個用例都有明確的介面
 3. **單一職責**: 每個模組都有清楚的職責
 4. **開放封閉**: 通過抽象介面支援擴展
+5. **路由分離**: 業務邏輯按領域分離到不同的 router 模組
 
 ---
 
