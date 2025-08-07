@@ -1,0 +1,363 @@
+# pytest-bdd Command Reference
+
+## Overview
+Essential pytest commands for Brief Bridge BDD development with pytest-bdd framework.
+
+## Core TDD Development Commands
+
+### During TDD Development (Single Scenario)
+
+**Run only WIP scenario:**
+```bash
+pytest -m wip
+```
+- Use during RED-GREEN-REFACTOR cycle  
+- Only runs scenarios marked with `@wip`
+- Fast feedback for current development
+
+**Run WIP with verbose output:**
+```bash
+pytest -m wip -v
+```
+- Shows detailed step execution
+- Helpful for debugging step definitions
+- Shows which steps pass/fail
+
+### After Scenario Completion
+
+**Run full test suite:**
+```bash
+pytest
+```
+- Use after removing `@wip` marker
+- Validates no regressions introduced
+- Must pass before scenario is considered complete
+
+**Run with coverage:**
+```bash
+pytest --cov=brief_bridge
+```
+- Shows code coverage during development
+- Identifies untested code paths
+
+## Test Discovery and Collection
+
+### Scenario Discovery
+
+**Collect all scenarios (don't run):**
+```bash
+pytest --collect-only
+```
+- Shows all discovered scenarios
+- Useful for validating feature file syntax
+- Shows which scenarios would run
+
+**Collect specific feature:**
+```bash
+pytest tests/submit_command/ --collect-only
+```
+- Shows scenarios in specific feature
+- Validates walking skeleton structure
+
+**Show detailed collection:**
+```bash
+pytest --collect-only -v
+```
+- Verbose collection information
+- Shows step definitions found
+- Helpful for debugging test setup
+
+### Marker-based Collection
+
+**Show skipped scenarios:**
+```bash
+pytest --collect-only -m skip
+```
+- Lists all @skip scenarios
+- Useful for planning next work items
+
+**Show WIP scenarios:**
+```bash  
+pytest --collect-only -m wip
+```
+- Lists all @wip scenarios
+- Should only show one during TDD
+
+## Feature-Specific Testing
+
+### Single Feature Development
+
+**Test specific feature directory:**
+```bash
+pytest tests/submit_command/
+```
+- Runs all scenarios in feature
+- Good for feature-focused development
+
+**Test specific scenario by keyword:**
+```bash
+pytest -k "Submit command to online idle client"
+```
+- Runs scenarios matching keyword
+- Useful for testing specific business cases
+
+### Multiple Features
+
+**Run multiple features:**
+```bash
+pytest tests/submit_command/ tests/register_client/
+```
+- Tests multiple features together
+- Useful for integration validation
+
+## Debugging and Diagnostics
+
+### Detailed Output
+
+**Show detailed step execution:**
+```bash
+pytest -v -s
+```
+- `-v`: Verbose scenario names
+- `-s`: Show print statements and stdout
+- Helpful for debugging step logic
+
+**Show step definitions:**
+```bash
+pytest --bdd-steps-catalog
+```
+- Lists all available step definitions
+- Useful for finding reusable steps
+- Helps identify duplicate steps
+
+**Show failed test details:**
+```bash
+pytest -v --tb=short
+```
+- Shows concise traceback for failures
+- Good for TDD RED phase analysis
+
+**Show full tracebacks:**
+```bash
+pytest --tb=long
+```
+- Detailed error information
+- Useful for complex debugging
+
+### Performance Analysis
+
+**Show slowest tests:**
+```bash
+pytest --durations=10
+```
+- Shows 10 slowest test executions
+- Identifies performance bottlenecks
+- Useful for optimizing test suite
+
+**Time each test:**
+```bash
+pytest --durations=0
+```
+- Shows duration of all tests
+- Comprehensive timing information
+
+## Quality Assurance Commands
+
+### Syntax and Structure Validation
+
+**Dry run (collect only):**
+```bash
+pytest --collect-only --quiet
+```
+- Quick syntax validation
+- No actual test execution
+- Fast validation of test structure
+
+**Check for test collection errors:**
+```bash
+pytest --collect-only 2>&1 | grep -i error
+```
+- Identifies collection problems
+- Useful after walking skeleton creation
+
+### Coverage and Reporting
+
+**Generate HTML coverage report:**
+```bash
+pytest --cov=brief_bridge --cov-report=html
+```
+- Creates htmlcov/ directory with coverage report
+- Visual coverage analysis
+- Identifies untested code
+
+**Show missing lines:**
+```bash
+pytest --cov=brief_bridge --cov-report=term-missing
+```
+- Shows specific uncovered lines
+- Terminal-based coverage report
+- Quick coverage analysis
+
+## CI/CD and Automation Commands
+
+### Continuous Integration
+
+**Run all tests with coverage:**
+```bash
+pytest --cov=brief_bridge --cov-report=xml --cov-report=term
+```
+- XML report for CI systems
+- Terminal output for developers
+- Standard CI/CD setup
+
+**Run with JUnit XML output:**
+```bash
+pytest --junitxml=reports/junit.xml
+```
+- JUnit-compatible XML reports
+- Integration with CI/CD pipelines
+
+### Parallel Execution
+
+**Run tests in parallel (if pytest-xdist installed):**
+```bash
+pytest -n auto
+```
+- Utilizes multiple CPU cores
+- Faster test suite execution
+- Good for large test suites
+
+## Marker Usage Patterns
+
+### Brief Bridge Specific Markers
+
+**Work in Progress scenarios:**
+```bash
+# During TDD - run only current work
+pytest -m wip
+
+# Check no WIP scenarios remain
+pytest --collect-only -m wip
+```
+
+**Skip scenarios temporarily:**
+```bash
+# Skip broken scenarios temporarily
+pytest -m "not skip"
+
+# Show all skipped scenarios  
+pytest --collect-only -m skip
+```
+
+### Custom Marker Examples
+
+**By business domain:**
+```bash
+# If you add custom markers
+pytest -m "client_management"
+pytest -m "command_processing"
+```
+
+## Common Command Combinations
+
+### TDD Workflow Commands
+
+**Start TDD cycle:**
+```bash
+pytest -m wip -v
+```
+
+**Quick validation:**
+```bash
+pytest --collect-only -q
+```
+
+**Completion validation:**
+```bash
+pytest --cov=brief_bridge -v
+```
+
+### Debugging Workflow
+
+**Step-by-step debugging:**
+```bash
+pytest -m wip -v -s --tb=short
+```
+
+**Full diagnostic:**
+```bash
+pytest -m wip -v -s --tb=long --bdd-steps-catalog
+```
+
+## File Organization Commands
+
+### Test Structure Validation
+
+**Check test discovery:**
+```bash
+find tests/ -name "*.py" -exec python -m py_compile {} \;
+pytest --collect-only
+```
+
+**Validate feature files:**
+```bash
+find tests/ -name "*.feature" | xargs grep -l "@wip\|@skip"
+```
+
+## Error Resolution Commands
+
+### Common Issues
+
+**Import errors:**
+```bash
+pytest --collect-only -v
+python -c "import brief_bridge; print('Imports OK')"
+```
+
+**Step definition issues:**
+```bash
+pytest --bdd-steps-catalog | grep -i "not found"
+```
+
+**Marker issues:**
+```bash
+pytest -m nonexistent --collect-only  # Should show no tests
+```
+
+## Best Practices Command Patterns
+
+### TDD Development
+
+1. **Start scenario:** `pytest -m wip -v`
+2. **During development:** `pytest -m wip`
+3. **Before completion:** `pytest`
+4. **After completion:** `pytest --collect-only -m wip` (should be empty)
+
+### Feature Development
+
+1. **Feature start:** `pytest --collect-only tests/{feature}/`
+2. **Feature progress:** `pytest tests/{feature}/ -v`
+3. **Feature completion:** `pytest tests/{feature}/` (all pass)
+
+### Quality Assurance
+
+1. **Regular validation:** `pytest --cov=brief_bridge`
+2. **Before commits:** `pytest -v`
+3. **Before releases:** `pytest --cov=brief_bridge --cov-report=html`
+
+## Environment-Specific Commands
+
+### Local Development
+```bash
+pytest -v --tb=short  # Quick feedback
+```
+
+### CI/CD Pipeline
+```bash
+pytest --cov=brief_bridge --cov-report=xml --junitxml=reports/junit.xml
+```
+
+### Production Validation
+```bash
+pytest --tb=no -q  # Minimal output for production health checks
+```

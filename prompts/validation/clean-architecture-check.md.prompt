@@ -1,0 +1,322 @@
+# Clean Architecture Conformance Validation
+
+## Objective
+Validate that implementation maintains Clean Architecture principles with proper dependency direction and layer boundaries.
+
+## When to Use
+- After completing each scenario
+- When suspecting architecture violations
+- Before merging or releasing code
+- When debugging dependency issues
+
+## Required Reading
+**MUST read these files before validation:**
+
+Use the Read tool to load:
+1. `docs/clean-architecture-structure.md` - Architecture design reference
+2. Current implementation in `brief_bridge/` directory
+3. Test implementations in `tests/` directory
+
+## Validation Process
+
+### Step 1: Layer Structure Verification
+
+**Check directory structure matches design:**
+```
+brief_bridge/
+├── domain/                    # Core business logic
+│   ├── entities/              # Business entities
+│   ├── value_objects/         # Immutable value types
+│   ├── repositories/          # Repository interfaces
+│   └── services/              # Domain services
+├── application/               # Use cases and orchestration
+│   └── use_cases/             # Application use cases
+└── infrastructure/            # External concerns
+    ├── repositories/          # Repository implementations
+    ├── web/                   # FastAPI web layer
+    └── config/                # Configuration
+```
+
+**Validation Checklist:**
+- [ ] All required directories exist
+- [ ] No unexpected directories in layer structure
+- [ ] Files placed in appropriate layers
+
+### Step 2: Dependency Direction Analysis
+
+**The Dependency Rule: Source code dependencies must point inward**
+
+**Check import statements in each layer:**
+
+**Domain Layer (brief_bridge/domain/) - NO OUTWARD DEPENDENCIES:**
+```bash
+# Should find NO imports from application or infrastructure
+find brief_bridge/domain -name "*.py" -exec grep -l "from brief_bridge\.\(application\|infrastructure\)" {} \;
+```
+- [ ] Domain has zero imports from application layer
+- [ ] Domain has zero imports from infrastructure layer
+- [ ] Domain only imports from: standard library, external libraries, other domain modules
+
+**Application Layer (brief_bridge/application/) - DOMAIN ONLY:**
+```bash
+# Should find NO imports from infrastructure
+find brief_bridge/application -name "*.py" -exec grep -l "from brief_bridge\.infrastructure" {} \;
+```
+- [ ] Application imports from domain layer ✅
+- [ ] Application has zero imports from infrastructure layer
+- [ ] Application can import: domain, standard library, external libraries
+
+**Infrastructure Layer (brief_bridge/infrastructure/) - CAN IMPORT ALL:**
+- [ ] Infrastructure imports from domain layer ✅
+- [ ] Infrastructure imports from application layer ✅
+- [ ] Infrastructure can import any layer (dependency direction preserved)
+
+### Step 3: Interface-Implementation Validation
+
+**Repository Pattern Check:**
+
+**Domain defines interfaces:**
+```python
+# brief_bridge/domain/repositories/client_repository.py
+from abc import ABC, abstractmethod
+
+class ClientRepository(ABC):
+    @abstractmethod
+    async def save(self, client: Client) -> None:
+        pass
+    
+    @abstractmethod 
+    async def find_by_id(self, client_id: ClientId) -> Optional[Client]:
+        pass
+```
+
+**Infrastructure implements interfaces:**
+```python
+# brief_bridge/infrastructure/repositories/memory_client_repository.py
+from brief_bridge.domain.repositories.client_repository import ClientRepository
+
+class MemoryClientRepository(ClientRepository):
+    async def save(self, client: Client) -> None:
+        # Implementation
+```
+
+**Validation Checklist:**
+- [ ] All repository interfaces defined in domain layer
+- [ ] All repository implementations in infrastructure layer  
+- [ ] Implementations inherit from domain interfaces
+- [ ] No domain layer imports infrastructure implementations
+
+### Step 4: Use Case Boundary Validation
+
+**Use cases orchestrate domain logic:**
+
+**Correct Use Case Pattern:**
+```python
+# brief_bridge/application/use_cases/submit_command_use_case.py
+class SubmitCommandUseCase:
+    def __init__(self, client_repo: ClientRepository, command_repo: CommandRepository):
+        self._client_repo = client_repo  # Domain interface
+        self._command_repo = command_repo  # Domain interface
+    
+    async def execute(self, request: SubmitCommandRequest) -> SubmitCommandResponse:
+        # Orchestrates domain entities and services
+        client = await self._client_repo.find_by_id(ClientId(request.client_id))
+        command = Command.create(...)  # Domain entity
+        await self._command_repo.save(command)
+        return SubmitCommandResponse.from_command(command)
+```
+
+**Validation Checklist:**
+- [ ] Use cases only depend on domain interfaces (not implementations)
+- [ ] Use cases orchestrate domain entities and services
+- [ ] Use cases contain minimal business logic (orchestration only)
+- [ ] Business rules implemented in domain entities/services
+
+### Step 5: Test Layer Architecture
+
+**Test dependencies should follow same rules:**
+
+**Domain Tests:**
+```python
+# tests/unit/domain/ - Pure domain testing
+from brief_bridge.domain.entities.client import Client
+# No application or infrastructure imports
+```
+
+**Application Tests:**
+```python  
+# tests/unit/application/ - Use case testing
+from brief_bridge.application.use_cases.submit_command_use_case import SubmitCommandUseCase
+from brief_bridge.domain.repositories.client_repository import ClientRepository  # Interface only
+```
+
+**Integration Tests:**
+```python
+# tests/integration/ - End-to-end testing
+# Can import from all layers (testing real implementations)
+```
+
+**Validation Checklist:**
+- [ ] Unit tests respect layer boundaries
+- [ ] Domain tests import only domain layer
+- [ ] Application tests use domain interfaces (not implementations)
+- [ ] Integration tests can use all layers
+
+### Step 6: Business Logic Location Check
+
+**Business rules must reside in domain layer:**
+
+**Correct Business Logic Placement:**
+```python
+# ✅ Correct: Business rule in domain entity
+class Client:
+    def assign_command(self, command: Command):
+        if self.has_active_command():  # Business rule
+            raise ClientBusyError("Client already executing command")
+        self._current_command = command
+
+# ✅ Correct: Business rule in domain service  
+class CommandDistributionService:
+    def can_accept_command(self, client: Client) -> bool:
+        return client.is_online() and client.is_available()  # Business rule
+```
+
+**Incorrect Business Logic Placement:**
+```python
+# ❌ Wrong: Business rule in use case
+class SubmitCommandUseCase:
+    async def execute(self, request):
+        if client.status == "OFFLINE":  # Business rule in wrong layer
+            raise ValueError("Client offline")
+
+# ❌ Wrong: Business rule in infrastructure  
+class WebController:
+    def submit_command(self, request):
+        if not self.validate_client_status(request.client_id):  # Business rule
+            return {"error": "Invalid client"}
+```
+
+**Validation Checklist:**
+- [ ] Client management rules in Client entity
+- [ ] Command validation rules in Command entity  
+- [ ] Distribution logic in domain services
+- [ ] No business rules in application/infrastructure layers
+
+## Architecture Violation Detection
+
+### Common Violations and Fixes
+
+**1. Domain importing outer layers:**
+```python
+# ❌ Violation
+from brief_bridge.infrastructure.repositories.memory_client_repository import MemoryClientRepository
+
+# ✅ Fix: Use dependency injection
+from brief_bridge.domain.repositories.client_repository import ClientRepository
+```
+
+**2. Business logic in use cases:**
+```python
+# ❌ Violation  
+class SubmitCommandUseCase:
+    def execute(self, request):
+        if client.status != "ONLINE":  # Business rule
+            raise Error("Client not available")
+
+# ✅ Fix: Move to domain
+class Client:
+    def can_accept_command(self) -> bool:
+        return self.is_online() and self.is_available()
+```
+
+**3. Use cases depending on implementations:**
+```python
+# ❌ Violation
+from brief_bridge.infrastructure.repositories.memory_client_repository import MemoryClientRepository
+
+# ✅ Fix: Depend on interfaces
+from brief_bridge.domain.repositories.client_repository import ClientRepository
+```
+
+## Automated Architecture Validation
+
+### Shell Commands
+
+**Check for dependency violations:**
+```bash
+# Domain layer importing outward
+find brief_bridge/domain -name "*.py" -exec grep -H "from brief_bridge\.\(application\|infrastructure\)" {} \;
+
+# Application layer importing infrastructure  
+find brief_bridge/application -name "*.py" -exec grep -H "from brief_bridge\.infrastructure" {} \;
+
+# Business logic keywords in wrong layers
+grep -r "business.*rule\|domain.*logic" brief_bridge/application/ brief_bridge/infrastructure/
+```
+
+**Check interface usage:**
+```bash
+# Find concrete repository usage in use cases
+grep -r "Memory.*Repository\|Postgres.*Repository" brief_bridge/application/
+```
+
+## Validation Completion Checklist
+
+### Layer Structure
+- [ ] All layers have correct directory structure
+- [ ] Files placed in appropriate layers
+- [ ] No unexpected directories or files
+
+### Dependency Direction  
+- [ ] Domain layer has zero outward dependencies
+- [ ] Application layer imports only domain
+- [ ] Infrastructure layer can import all layers
+- [ ] Test layer follows same dependency rules
+
+### Interface Boundaries
+- [ ] All repository interfaces in domain
+- [ ] All implementations in infrastructure  
+- [ ] Use cases depend on interfaces, not implementations
+- [ ] Dependency injection used properly
+
+### Business Logic Placement
+- [ ] All business rules in domain layer
+- [ ] Use cases contain only orchestration logic
+- [ ] Infrastructure contains only technical concerns
+- [ ] No business logic in test layer
+
+## Remediation Actions
+
+**If violations found:**
+
+**Step 1: Document Violations**
+- List specific files and line numbers
+- Categorize violation type (dependency, business logic, etc.)
+- Assess impact and priority
+
+**Step 2: Fix Architecture Issues**  
+- Move business rules to domain entities/services
+- Replace concrete dependencies with interfaces
+- Extract business logic from use cases
+- Update imports to respect layer boundaries
+
+**Step 3: Re-validate**
+- Run validation commands again
+- Ensure no new violations introduced
+- Verify all tests still pass
+
+**Step 4: Prevent Future Violations**
+- Add architecture validation to CI/CD
+- Document architecture decisions
+- Review architecture compliance in code reviews
+
+## Next Steps
+
+**If validation passes:**
+✅ Architecture is compliant - continue development
+
+**If violations found:**
+🔧 Fix violations before proceeding with new features
+
+**For ongoing compliance:**  
+📋 Run validation checks regularly during development

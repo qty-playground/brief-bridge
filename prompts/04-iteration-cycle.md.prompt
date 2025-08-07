@@ -1,0 +1,209 @@
+# Phase 4: Next Iteration Cycle
+
+## Objective
+Move to the next scenario within current feature or move to next feature file, repeating TDD cycle until all scenarios are implemented.
+
+## Prerequisites
+- Current scenario completed (no @wip marker)
+- Full test suite passes (`pytest`)
+- Ready to select next work item
+
+## Required Reading
+**MUST read these files before proceeding:**
+
+Use the Read tool to load:
+1. `tests/{current_feature}/story.feature` - Check remaining @skip scenarios
+2. `docs/user-stories/` directory listing - To see available features
+3. Current feature's business rules from `docs/domain-model.md`
+
+## Decision Tree: What's Next?
+
+### Option 1: Next Scenario in Current Feature
+
+**When to choose:** Current feature has more @skip scenarios
+
+**Process:**
+1. **Identify Next Scenario**: Find the next @skip scenario in current feature file
+2. **Activate Scenario**: Change @skip to @wip for next scenario
+3. **Return to TDD**: Use `03-tdd-red-green-refactor.md.prompt`
+
+**Example Progress:**
+```gherkin
+Feature: Submit Command
+  
+  # Completed scenario 1  
+  Scenario: Submit command to online idle client
+    # ... implemented and working
+    
+  @wip  # Next scenario activated
+  Scenario: Submit command to offline client
+    # ... ready for TDD implementation
+    
+  @skip  # Future scenarios
+  Scenario: Submit command to busy client
+    # ... waiting
+```
+
+**Business Rule Consideration:**
+- All scenarios in one feature file serve the same business rule scope
+- Next scenario will likely extend existing CA components
+- May introduce new error handling or edge cases
+
+### Option 2: Move to New Feature
+
+**When to choose:** Current feature has no more @skip scenarios (all implemented)
+
+**Process:**
+1. **Select Next Feature**: Choose from remaining user stories in `docs/user-stories/`
+2. **Start New Feature**: Use `01-user-stories-to-features.md.prompt` 
+3. **Build New Infrastructure**: Follow complete 4-phase cycle
+
+**Feature Selection Priority:**
+1. **Core AI Assistant features** (highest priority):
+   - `submit_command_use_case`
+   - `query_execution_result_use_case` 
+   - `list_available_clients_use_case`
+
+2. **Core Client features**:
+   - `register_client_use_case`
+   - `poll_for_commands_use_case`
+   - `execute_command_and_report_use_case`
+   - `maintain_heartbeat_use_case`
+
+3. **System Management features** (lowest priority):
+   - System monitoring and cleanup features
+
+## Next Scenario Implementation
+
+### Step 1: Scenario Analysis
+
+Before activating next scenario, analyze:
+- [ ] What new business rule does this scenario test?
+- [ ] What existing CA components can be reused?
+- [ ] What new components might be needed?
+- [ ] What new error conditions are introduced?
+
+### Step 2: Scenario Activation
+
+**Change the marker:**
+```gherkin
+@wip  # Changed from @skip
+Scenario: Submit command to offline client
+  Given client "client-002" exists with status "OFFLINE"
+  When I POST to "/commands" with:
+    """
+    {
+      "client_id": "client-002",
+      "content": "ls -la"
+    }
+    """
+  Then response status code should be 400
+  And response body should be:
+    """
+    {
+      "error": "Client is not available for command execution", 
+      "code": "CLIENT_UNAVAILABLE",
+      "client_status": "OFFLINE"
+    }
+    """
+```
+
+### Step 3: Business Rule Analysis
+
+Reference `docs/domain-model.md` to identify business rules for new scenario:
+
+**Example for offline client scenario:**
+- **command.target_validation**: Only distribute commands to online clients
+- **client.offline_detection**: Clients exceeding heartbeat interval are marked offline
+- Need to implement validation in `SubmitCommandUseCase`
+- Need proper error handling and HTTP status codes
+
+### Step 4: TDD Implementation
+
+**Return to:** `03-tdd-red-green-refactor.md.prompt`
+
+Expected TDD cycle modifications:
+- **RED**: New scenario fails (existing error handling insufficient)
+- **GREEN Stage 1**: Extend existing CA structure minimally
+- **GREEN Stage 2**: Add business rule validation for offline clients
+- **REFACTOR**: Improve error handling and validation logic
+
+## New Feature Implementation
+
+### Step 1: Feature Priority Assessment
+
+**Check feature dependencies:**
+- Does new feature depend on existing features?
+- Can it be implemented independently?
+- What business rules does it introduce?
+
+### Step 2: Feature Preparation
+
+**Return to:** `01-user-stories-to-features.md.prompt`
+
+Follow complete cycle:
+1. Convert user story to feature file
+2. Build walking skeleton
+3. Implement scenarios via TDD
+4. Validate with completion checklists
+
+## Iteration Tracking
+
+### Feature Completion Criteria
+For each feature file:
+- [ ] All scenarios implemented (no @skip markers)
+- [ ] All business rules for feature enforced
+- [ ] Clean Architecture structure maintained
+- [ ] Full test suite passes
+- [ ] Validation checklists completed
+
+### System Progress Tracking
+- [ ] Core AI Assistant features completed
+- [ ] Core Client features completed  
+- [ ] System Management features completed
+- [ ] All business rules from domain model implemented
+- [ ] All user stories converted to working BDD tests
+
+## Validation Between Iterations
+
+**Always run between scenarios:**
+```bash
+pytest  # Full test suite must pass
+```
+
+**Periodically use validation prompts:**
+- `validation/domain-model-check.md.prompt`: Ensure continued alignment
+- `validation/clean-architecture-check.md.prompt`: Check dependency direction
+- `validation/test-responsibility-check.md.prompt`: Validate test boundaries
+
+## Success Metrics
+
+### Per Scenario
+- Test transitions RED → GREEN → stays GREEN after REFACTOR
+- Business rule properly enforced in domain layer
+- Clean Architecture boundaries maintained
+
+### Per Feature  
+- All scenarios pass consistently
+- Feature completely implements corresponding user story
+- No regression in other features
+
+### Overall System
+- All user stories implemented as passing BDD tests
+- Complete Clean Architecture structure
+- All business rules enforced
+- System ready for production deployment
+
+## Next Action Decision
+
+**If current feature has @skip scenarios:**
+→ Activate next @skip scenario and use `03-tdd-red-green-refactor.md.prompt`
+
+**If current feature is complete:**
+→ Select next user story and use `01-user-stories-to-features.md.prompt`
+
+**If unsure about implementation quality:**
+→ Use validation prompts in `validation/` directory
+
+**If all features complete:**
+→ 🎉 Implementation finished! Run final system validation.

@@ -52,6 +52,32 @@ GET  /clients            # List clients
 - **Runtime context collection**: Get OS-specific logs, error messages, system info
 - **Compatibility verification**: Ensure scripts work across different OS versions
 
+## Development
+
+Brief Bridge is developed using BDD (Behavior-Driven Development), Clean Architecture, and Test-Driven Development methodologies.
+
+### For Developers
+- **[Development Guide](docs/DEVELOPMENT.md)** - Comprehensive development documentation
+- **[Domain Model](docs/domain-model.md)** - Business entities and rules
+- **[Architecture Structure](docs/clean-architecture-structure.md)** - Code organization
+- **[User Stories](docs/user-stories/)** - Technical specifications
+
+### For AI Assistants  
+- **[Implementation Prompts](prompts/README.md)** - Systematic BDD implementation guide
+- **Quick Start**: `@prompts/00-overview.md.prompt`
+
+### Project Structure
+```
+brief-bridge/
+├── brief_bridge/           # Clean Architecture implementation
+│   ├── domain/             # Business logic
+│   ├── application/        # Use cases  
+│   └── infrastructure/     # External concerns
+├── tests/                  # BDD tests with pytest-bdd
+├── docs/                   # Design documentation
+└── prompts/                # AI assistant implementation guides
+```
+
 ## Status
 
 🚧 **MVP in development** - Core polling mechanism and command execution

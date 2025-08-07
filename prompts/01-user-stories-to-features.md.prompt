@@ -1,0 +1,126 @@
+# Phase 1: User Stories to Feature Files
+
+## Objective
+Convert user stories from `docs/user-stories/` to Gherkin feature files with consistent naming and structure.
+
+## Required Reading
+**MUST read these files before proceeding:**
+
+Use the Read tool to load:
+1. `docs/user-stories/{specified_feature_name}.md` - The target user story
+2. `docs/domain-model.md` - For business rules and entity relationships  
+3. `docs/clean-architecture-structure.md` - For understanding code organization
+
+## Step-by-Step Process
+
+### Step 1: Analyze User Story
+After reading the user story document, identify:
+- [ ] All test scenarios in "Test Scenarios" section
+- [ ] API specifications (endpoints, request/response formats)
+- [ ] Error codes and HTTP status codes
+- [ ] Business rules referenced at the end
+
+### Step 2: Create Directory Structure
+Create the following structure:
+```
+tests/{feature_name}/
+├── __init__.py
+└── story.feature
+```
+
+**Naming Rules:**
+- `{feature_name}` must match the user story filename (without `.md`)
+- Must be valid Python module name (lowercase, underscores only)
+- Example: `submit_command_use_case.md` → `tests/submit_command_use_case/`
+
+### Step 3: Convert Scenarios to Gherkin
+
+**Template Structure:**
+```gherkin
+Feature: {Human Readable Feature Name}
+
+  @skip
+  Scenario: {Scenario name from user story}
+    Given {setup conditions}
+    When {action performed}  
+    Then {expected results}
+    And {additional validations}
+```
+
+**Conversion Guidelines:**
+- Copy scenario names exactly from user story
+- Preserve all Given/When/Then steps as specified
+- Keep JSON examples in docstrings using `"""`
+- **Mark ALL scenarios with @skip initially**
+- Maintain exact API specifications and error codes
+
+### Step 4: Validation
+
+Verify the created feature file:
+- [ ] Feature name is human-readable
+- [ ] All scenarios from user story included
+- [ ] All scenarios marked with @skip
+- [ ] Gherkin syntax is valid
+- [ ] JSON payloads properly formatted in docstrings
+- [ ] Directory name is valid Python module
+
+## Example Output
+
+Based on `docs/user-stories/submit_command_use_case.md`:
+
+**File:** `tests/submit_command_use_case/story.feature`
+```gherkin
+Feature: Submit Command
+
+  @skip
+  Scenario: Submit command to online idle client
+    Given client "client-001" exists with status "ONLINE" and availability "IDLE"
+    When I POST to "/commands" with:
+      """
+      {
+        "client_id": "client-001",
+        "content": "echo 'hello world'"
+      }
+      """
+    Then response status code should be 201
+    And response body should match:
+      """
+      {
+        "command_id": "<uuid>",
+        "status": "PENDING",
+        "client_id": "client-001"
+      }
+      """
+
+  @skip
+  Scenario: Submit command to offline client
+    Given client "client-002" exists with status "OFFLINE"
+    When I POST to "/commands" with:
+      """
+      {
+        "client_id": "client-002",
+        "content": "ls -la"
+      }
+      """
+    Then response status code should be 400
+    And response body should be:
+      """
+      {
+        "error": "Client is not available for command execution",
+        "code": "CLIENT_UNAVAILABLE",
+        "client_status": "OFFLINE"
+      }
+      """
+```
+
+## Completion Checklist
+- [ ] Read all required documents
+- [ ] Created feature directory with valid Python module name
+- [ ] Converted all scenarios from user story
+- [ ] All scenarios marked with @skip
+- [ ] Gherkin syntax validated
+- [ ] JSON payloads properly formatted
+
+## Next Step
+After completing this phase, proceed to:
+`02-walking-skeleton.md.prompt` - Create pytest-bdd testing infrastructure

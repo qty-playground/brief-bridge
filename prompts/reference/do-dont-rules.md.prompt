@@ -1,0 +1,469 @@
+# Brief Bridge Implementation Rules
+
+## Overview
+Essential DO and DON'T rules for implementing Brief Bridge using BDD, Clean Architecture, and TDD methodology.
+
+## TDD Development Rules
+
+### ✅ DO: TDD Methodology
+
+**Work on exactly one scenario at a time:**
+```gherkin
+@wip  # Only one scenario marked as WIP
+Scenario: Submit command to online client
+  # ... scenario content
+
+@skip  # All others remain skipped
+Scenario: Submit command to offline client
+  # ... scenario content
+```
+
+**Use correct pytest commands during development:**
+- `pytest -m wip` during TDD cycle
+- `pytest` only after scenario completion
+- Never run full suite during TDD development
+
+**Follow RED-GREEN-REFACTOR sequence:**
+1. **RED**: Test fails with NotImplementedError
+2. **GREEN Stage 1**: Minimal CA structure with fake data
+3. **GREEN Stage 2**: Real business logic for current scenario only
+4. **REFACTOR**: Improve code quality without changing functionality
+
+### ❌ DON'T: TDD Violations
+
+**Never work on multiple scenarios simultaneously:**
+```gherkin
+# ❌ Wrong: Multiple WIP scenarios
+@wip
+Scenario: Submit command to online client
+@wip  
+Scenario: Submit command to offline client
+```
+
+**Never skip TDD phases:**
+- Don't implement business logic in GREEN Stage 1
+- Don't skip REFACTOR phase
+- Don't jump from RED directly to complex implementation
+
+**Never run full test suite during TDD:**
+- Don't use `pytest` during development
+- Don't ignore failing scenarios from other features
+- Don't batch multiple scenario completions
+
+## Clean Architecture Rules
+
+### ✅ DO: Proper Layer Separation
+
+**Respect dependency direction:**
+```python
+# ✅ Correct: Domain defines interfaces
+# brief_bridge/domain/repositories/client_repository.py
+class ClientRepository(ABC):
+    @abstractmethod
+    async def find_by_id(self, client_id: ClientId) -> Optional[Client]:
+        pass
+
+# ✅ Correct: Infrastructure implements interfaces
+# brief_bridge/infrastructure/repositories/memory_client_repository.py  
+class MemoryClientRepository(ClientRepository):
+    async def find_by_id(self, client_id: ClientId) -> Optional[Client]:
+        # Implementation
+```
+
+**Keep business logic in domain layer:**
+```python
+# ✅ Correct: Business rule in domain entity
+class Client:
+    def assign_command(self, command: Command):
+        if self.has_active_command():  # Business rule
+            raise ClientBusyError("Client already executing command")
+```
+
+**Use dependency injection:**
+```python
+# ✅ Correct: Use case depends on interfaces
+class SubmitCommandUseCase:
+    def __init__(self, client_repo: ClientRepository):  # Interface, not implementation
+        self._client_repo = client_repo
+```
+
+### ❌ DON'T: Architecture Violations
+
+**Never violate dependency direction:**
+```python
+# ❌ Wrong: Domain importing from outer layers
+# brief_bridge/domain/entities/client.py
+from brief_bridge.infrastructure.repositories.memory_client_repository import MemoryClientRepository
+```
+
+**Never put business logic in outer layers:**
+```python
+# ❌ Wrong: Business rule in use case
+class SubmitCommandUseCase:
+    def execute(self, request):
+        if client.status == "OFFLINE":  # Business logic in wrong layer
+            raise ValueError("Client not available")
+
+# ❌ Wrong: Business rule in infrastructure
+class WebController:
+    def submit_command(self, request):
+        if not self._validate_client(request.client_id):  # Business logic
+            return {"error": "Invalid client"}
+```
+
+**Never depend on concrete implementations in use cases:**
+```python
+# ❌ Wrong: Use case depends on implementation
+class SubmitCommandUseCase:
+    def __init__(self, client_repo: MemoryClientRepository):  # Concrete implementation
+        self._client_repo = client_repo
+```
+
+## BDD and Test Rules
+
+### ✅ DO: Proper Test Boundaries
+
+**Write business-focused feature files:**
+```gherkin
+# ✅ Correct: Business language
+Feature: Submit Command
+  Scenario: Submit command to available client
+    Given client "client-001" is online and idle
+    When I submit command "ls -la" to client "client-001"
+    Then command should be accepted with status "PENDING"
+```
+
+**Delegate to domain layer in step definitions:**
+```python
+# ✅ Correct: Step uses domain entities
+@given('client "{client_id}" is online and idle')
+def given_client_online_idle(client_id):
+    client = Client(ClientId(client_id), ClientInfo.default())
+    client.mark_online()  # Domain method
+    client.mark_idle()    # Domain method
+```
+
+**Verify observable outcomes:**
+```python
+# ✅ Correct: Test external system response
+@then('response status code should be {status_code:d}')
+def then_response_status_code(status_code):
+    assert test_context.last_response.status_code == status_code
+```
+
+### ❌ DON'T: Test Boundary Violations
+
+**Never put business logic in step definitions:**
+```python
+# ❌ Wrong: Business rule in step
+@given('client "{client_id}" is offline')
+def given_client_offline(client_id):
+    client = Client(ClientId(client_id))
+    # ❌ Business logic in test step
+    client._status = ClientStatus.OFFLINE
+    client._last_heartbeat = datetime.now() - timedelta(minutes=10)
+```
+
+**Never test internal implementation details:**
+```python
+# ❌ Wrong: Testing internal state
+@then('client availability should be set to BUSY')
+def then_client_availability_busy():
+    assert test_context.client._availability == ClientAvailability.BUSY  # Internal state
+```
+
+**Never use technical jargon in feature files:**
+```gherkin
+# ❌ Wrong: Technical implementation details
+Feature: Database Operations
+  Scenario: Insert client record
+    Given a Client entity exists
+    When I call ClientRepository.save() method
+    Then record should be inserted into clients table
+```
+
+## Domain Modeling Rules
+
+### ✅ DO: Proper Domain Design
+
+**Use value objects for identifiers:**
+```python
+# ✅ Correct: ClientId as value object
+@dataclass(frozen=True)
+class ClientId:
+    value: str
+    
+    def __post_init__(self):
+        if not self.value.strip():
+            raise ValueError("ClientId cannot be empty")
+```
+
+**Implement business rules in entities:**
+```python
+# ✅ Correct: Business rule in entity
+class Client:
+    def update_heartbeat(self):
+        """Business rule: client.heartbeat"""
+        self._last_heartbeat = datetime.now(timezone.utc)
+        if self._status == ClientStatus.OFFLINE:
+            self._status = ClientStatus.ONLINE
+```
+
+**Use domain services for complex logic:**
+```python
+# ✅ Correct: Cross-entity logic in domain service
+class CommandDistributionService:
+    def find_available_client(self, clients: List[Client]) -> Optional[Client]:
+        """Business rule: command.target_validation"""
+        for client in clients:
+            if client.is_available_for_command():
+                return client
+        return None
+```
+
+### ❌ DON'T: Domain Violations
+
+**Never use primitive types for domain concepts:**
+```python
+# ❌ Wrong: Primitive string for client ID
+class Client:
+    def __init__(self, client_id: str):  # Should be ClientId value object
+        self._client_id = client_id
+```
+
+**Never expose mutable internal state:**
+```python
+# ❌ Wrong: Direct access to internal attributes
+class Client:
+    @property
+    def commands(self) -> List[Command]:
+        return self._commands  # Exposes mutable list
+```
+
+**Never ignore business rule implementation:**
+```python
+# ❌ Wrong: Missing business rule validation
+class Command:
+    def assign_to_client(self, client: Client):
+        # Missing validation - should check if client can accept command
+        client.current_command = self
+```
+
+## Code Quality Rules
+
+### ✅ DO: Quality Practices
+
+**Use descriptive names (Screaming Architecture):**
+```python
+# ✅ Correct: Function name explains intent
+@given('client "{client_id}" exists with status "{status}" and availability "{availability}"')
+def given_client_exists_with_status_and_availability(client_id, status, availability):
+    # Clear intent from function name
+```
+
+**Keep functions focused and small:**
+```python
+# ✅ Correct: Single responsibility
+class Client:
+    def mark_online(self):
+        """Single responsibility: mark client as online"""
+        self._status = ClientStatus.ONLINE
+        self._last_heartbeat = datetime.now(timezone.utc)
+    
+    def mark_offline(self):
+        """Single responsibility: mark client as offline"""
+        self._status = ClientStatus.OFFLINE
+        self._availability = ClientAvailability.IDLE
+```
+
+**Write comprehensive docstrings:**
+```python
+# ✅ Correct: Clear documentation
+@given('client "{client_id}" exists with status "{status}" and availability "{availability}"')
+def given_client_exists_with_status_and_availability(client_id, status, availability):
+    """
+    Create and register a client with specified status and availability.
+    This step is completely independent and self-contained.
+    """
+```
+
+### ❌ DON'T: Quality Violations
+
+**Never use vague or misleading names:**
+```python
+# ❌ Wrong: Unclear function name
+def setup_stuff(data):  # What stuff? What data?
+    pass
+
+def handle_request(req):  # Handle how? What kind of request?
+    pass
+```
+
+**Never create monolithic functions:**
+```python
+# ❌ Wrong: Function doing too much
+def process_command_submission(client_id, command, status, validation, persistence):
+    # 50 lines of mixed responsibilities
+    if validation:
+        # validation logic
+    if client_id:
+        # client lookup
+    if command:
+        # command processing
+    # ... persistence logic
+```
+
+**Never skip error handling:**
+```python
+# ❌ Wrong: No error handling
+def find_client(client_id: str) -> Client:
+    client = repository.find(client_id)  # What if not found?
+    return client  # Could return None without warning
+```
+
+## File Organization Rules
+
+### ✅ DO: Proper Structure
+
+**Follow established directory structure:**
+```
+brief_bridge/
+├── domain/
+│   ├── entities/
+│   ├── value_objects/
+│   ├── repositories/
+│   └── services/
+├── application/
+│   └── use_cases/
+└── infrastructure/
+    ├── repositories/
+    ├── web/
+    └── config/
+```
+
+**Keep related functionality together:**
+```python
+# ✅ Correct: All Client-related domain logic in one file
+# brief_bridge/domain/entities/client.py
+class Client:
+    # All client business logic here
+    
+    def mark_online(self): pass
+    def mark_offline(self): pass
+    def assign_command(self, command): pass
+    def is_available_for_command(self): pass
+```
+
+**Use clear module naming:**
+```
+tests/submit_command/
+├── story.feature                # Clear: This is the BDD feature
+├── test_submit_command.py       # Clear: Main test orchestrator
+├── given_steps.py              # Clear: Given step implementations
+├── when_steps.py               # Clear: When step implementations
+└── then_steps.py               # Clear: Then step implementations
+```
+
+### ❌ DON'T: Organization Violations
+
+**Never mix layers in same file:**
+```python
+# ❌ Wrong: Domain and infrastructure in same file
+class Client:  # Domain entity
+    pass
+
+class PostgresClientRepository:  # Infrastructure - wrong file!
+    pass
+```
+
+**Never use generic or unclear file names:**
+```
+utils.py          # ❌ Too generic
+helpers.py        # ❌ What kind of helpers?
+stuff.py          # ❌ Meaningless
+manager.py        # ❌ Manager of what?
+```
+
+**Never spread single responsibility across multiple files:**
+```python
+# ❌ Wrong: Client logic spread across files
+# client.py - partial client logic
+# client_status.py - more client logic  
+# client_commands.py - more client logic
+# Should be in single client.py file
+```
+
+## Commit and Development Rules
+
+### ✅ DO: Clean Development Process
+
+**Commit only complete, working scenarios:**
+- Remove @wip marker before committing
+- Ensure full test suite passes
+- Include both implementation and tests
+
+**Write descriptive commit messages:**
+```bash
+# ✅ Correct: Clear commit message
+git commit -m "Implement submit command to online client scenario
+
+- Add Client entity with online/offline status management
+- Add SubmitCommandUseCase with client validation
+- Add walking skeleton for submit_command feature
+- All tests passing with proper CA structure"
+```
+
+**Keep commits focused:**
+- One scenario per commit
+- Don't mix refactoring with feature implementation
+- Don't mix unrelated changes
+
+### ❌ DON'T: Development Violations
+
+**Never commit incomplete work:**
+```bash
+# ❌ Wrong: Committing WIP or failing tests
+git commit -m "WIP: trying to make tests pass"
+```
+
+**Never mix unrelated changes:**
+```bash  
+# ❌ Wrong: Multiple unrelated changes
+git commit -m "Add client entity, fix typos, update README, refactor tests"
+```
+
+**Never ignore test failures:**
+```bash
+# ❌ Wrong: Committing when tests fail
+pytest  # Shows failures
+git commit -m "Add feature"  # Ignoring failures
+```
+
+## Validation Rules
+
+### ✅ DO: Regular Validation
+
+**Run validation prompts regularly:**
+- `validation/domain-model-check.md.prompt` after each scenario
+- `validation/clean-architecture-check.md.prompt` periodically
+- `validation/test-responsibility-check.md.prompt` before scenario completion
+
+**Validate before moving to next work:**
+```bash
+# Full validation before next scenario
+pytest                                    # All tests pass
+pytest --collect-only -m wip            # No WIP scenarios
+pytest --cov=brief_bridge --cov-report=term  # Coverage check
+```
+
+### ❌ DON'T: Validation Violations
+
+**Never skip validation steps:**
+- Don't assume architecture is correct without checking
+- Don't skip domain model validation
+- Don't ignore test responsibility boundaries
+
+**Never continue with failing validation:**
+- Fix architecture violations before new features
+- Address domain model mismatches immediately  
+- Resolve test boundary issues before scenario completion

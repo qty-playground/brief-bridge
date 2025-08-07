@@ -1,0 +1,217 @@
+# Domain Model Conformance Validation
+
+## Objective
+Ensure implementation aligns with domain design documents and validate business rule implementation.
+
+## When to Use
+- After completing each scenario
+- When implementation seems to deviate from design
+- Before marking feature as complete
+- When debugging business logic issues
+
+## Required Reading
+**MUST read these files before validation:**
+
+Use the Read tool to load:
+1. `docs/domain-model.md` - Reference design specifications
+2. Current implementation files in `brief_bridge/domain/`
+3. Current test implementations being validated
+
+## Validation Process
+
+### Step 1: Entity Structure Verification
+
+**Compare implemented entities with domain model class diagram:**
+
+**For each entity (Client, Command, ExecutionResult):**
+- [ ] **Attributes match**: All attributes from domain model present
+- [ ] **Type consistency**: Value objects used correctly (ClientId, CommandId, etc.)
+- [ ] **Method signatures**: Entity methods align with domain model
+- [ ] **Relationships**: Entity relationships match multiplicity constraints
+
+**Example Validation:**
+```python
+# Domain Model specifies: Client has client_id, status, availability, client_info, last_heartbeat
+# Implementation check:
+class Client:
+    def __init__(self, client_id: ClientId, client_info: ClientInfo):
+        self._client_id = client_id           # ✅ Matches - ClientId value object
+        self._status = ClientStatus.ONLINE    # ✅ Matches - using ClientStatus enum
+        self._availability = ClientAvailability.IDLE  # ✅ Matches - proper enum
+        self._client_info = client_info       # ✅ Matches - ClientInfo value object  
+        self._last_heartbeat = datetime.now() # ✅ Matches - timestamp tracking
+        # Any additional fields not in domain model?
+        self._extra_field = "unexpected"      # ❌ NOT in domain model - needs discussion
+```
+
+### Step 2: Value Objects Validation
+
+**Verify value objects match domain specifications:**
+
+**Check each value object:**
+- [ ] **Immutability**: Value objects are immutable (frozen dataclasses or read-only)
+- [ ] **Validation**: Proper validation in constructors
+- [ ] **Equality**: Proper equality implementation
+- [ ] **Type safety**: Used correctly throughout codebase
+
+**Example Validation:**
+```python
+# ClientId should be immutable with validation
+@dataclass(frozen=True)  # ✅ Immutable
+class ClientId:
+    value: str
+    
+    def __post_init__(self):
+        if not self.value or not self.value.strip():  # ✅ Validation present
+            raise ValueError("ClientId cannot be empty")
+```
+
+### Step 3: Business Rules Implementation Check
+
+**Cross-reference implemented rules with domain model business rules:**
+
+**For each business rule from domain model:**
+
+**Client Management Rules:**
+- [ ] **client.registration**: Implemented in Client entity creation
+- [ ] **client.heartbeat**: Implemented in heartbeat methods  
+- [ ] **client.offline_detection**: Implemented in status management
+
+**Command Distribution Rules:**
+- [ ] **command.target_validation**: Implemented in command submission logic
+- [ ] **client.concurrency**: Enforced - one command per client
+- [ ] **command.timeout**: Timeout mechanism implemented
+
+**Execution Order Rules:**
+- [ ] **system.no_queue**: No queuing mechanism present  
+- [ ] **client.availability**: Availability checked before command assignment
+- [ ] **client.serial_execution**: Serial execution enforced
+- [ ] **command.wait_for_completion**: New commands wait for completion
+
+**Result Integrity Rules:**
+- [ ] **execution_result.completeness**: Every command has result
+- [ ] **execution_result.full_output**: Complete output captured
+- [ ] **execution_result.error_preservation**: Error information preserved
+
+### Step 4: Relationship Validation
+
+**Verify entity relationships match domain model multiplicity:**
+
+**Check multiplicity constraints:**
+- [ ] **Client : Command = 1 : 0..1**: One client, zero or one running command
+- [ ] **Command : ExecutionResult = 1 : 0..1**: One command, zero or one result  
+- [ ] **Client : ClientId = 1 : 1**: Each client has unique ID
+
+**Example Validation:**
+```python
+# Check that Client can only have one active command
+class Client:
+    def assign_command(self, command: Command):
+        if self._current_command is not None:  # ✅ Enforces 0..1 relationship
+            raise BusinessRuleViolation("Client already has active command")
+        self._current_command = command
+```
+
+## Domain Model Deviation Protocol
+
+**If implementation differs from domain model:**
+
+### Step 1: Document the Difference
+- **What was implemented** vs **what was designed**?
+- **Where** does the deviation occur (entity, method, relationship)?
+- **Why** might this difference exist?
+
+### Step 2: Analyze the Cause
+**Possible reasons:**
+- Domain model was incomplete/incorrect for this scenario
+- Implementation misunderstood the design intent
+- New requirements emerged during implementation
+- Technical constraints required deviation
+
+### Step 3: Make Decision
+
+**Option A: Update Domain Model**
+- Domain model was incomplete or incorrect
+- Implementation reveals better understanding of domain
+- Update `docs/domain-model.md` to match implementation
+- Update related documentation
+
+**Option B: Fix Implementation** 
+- Implementation doesn't follow correct design
+- Domain model is accurate and complete
+- Modify code to align with domain model
+- May require refactoring
+
+**Option C: Document Justified Exception**
+- Technical constraints require deviation
+- Performance or practical reasons justify difference
+- Document exception with reasoning
+- Consider if domain model needs notes about exceptions
+
+### Step 4: Update Documentation
+- Update domain model if needed
+- Add implementation notes if justified exceptions exist
+- Ensure consistency across all documentation
+
+## Example Domain Model Checks
+
+### Entity Method Validation
+```python
+# Domain model shows Client.is_available() method
+# Implementation check:
+class Client:
+    def is_available(self) -> bool:  # ✅ Method exists
+        return (self._status == ClientStatus.ONLINE and  # ✅ Correct logic
+                self._availability == ClientAvailability.IDLE)
+```
+
+### Business Rule Location Validation  
+```python
+# Business rule: client.concurrency should be in domain layer
+# Check implementation location:
+
+# ✅ Correct: Rule in domain entity
+class Client:
+    def assign_command(self, command):
+        if self.has_active_command():  # Business rule enforcement
+            raise ClientBusyError("Client already executing command")
+
+# ❌ Wrong: Rule in application layer
+class SubmitCommandUseCase:
+    def execute(self, request):
+        if some_external_check():  # Business rule in wrong layer
+            raise Error("Client busy")
+```
+
+## Validation Completion Checklist
+
+- [ ] All entities match domain model structure
+- [ ] All value objects properly implemented  
+- [ ] All business rules implemented in correct layer
+- [ ] Entity relationships match multiplicity constraints
+- [ ] Any deviations documented with justification
+- [ ] Domain model updated if implementation revealed better design
+
+## Validation Commands
+
+```bash
+# Check for potential business logic in wrong layers
+find brief_bridge/ -name "*.py" -exec grep -l "business.*rule\|domain.*logic" {} \;
+
+# Verify domain purity
+find brief_bridge/domain -name "*.py" -exec grep -l "from brief_bridge\.(application\|infrastructure)" {} \;
+```
+
+## Action Items
+
+**If validation passes:**
+✅ Continue with current implementation
+
+**If validation fails:**  
+1. Choose correction approach (fix code vs update model)
+2. Make necessary changes
+3. Re-run validation  
+4. Update documentation as needed
+
+**If uncertain about deviations:**
+🤔 Discuss with team or document for future review

@@ -1,0 +1,72 @@
+# Brief Bridge BDD Implementation - Overview
+
+## Mission
+Implement Brief Bridge system using systematic BDD (Behavior-Driven Development) approach with pytest-bdd, following Clean Architecture principles.
+
+## Implementation Methodology
+
+This systematic 4-phase approach ensures proper test-driven development:
+
+**Phase 1: Synchronize User Stories to Feature Files** (`01-user-stories-to-features.md.prompt`)
+- Convert user stories to Gherkin feature files
+- Establish consistent naming and structure
+- Mark all scenarios with @skip initially
+
+**Phase 2: Create Testing Walking Skeleton** (`02-walking-skeleton.md.prompt`)  
+- Build pytest-bdd infrastructure shell
+- Create step definition skeletons
+- Establish test discovery structure
+
+**Phase 3: TDD RED-GREEN-REFACTOR Cycle** (`03-tdd-red-green-refactor.md.prompt`)
+- Implement one scenario at a time using TDD
+- Two-stage GREEN: Infrastructure Shell → Business Rules
+- Focus REFACTOR on code quality only
+
+**Phase 4: Next Iteration Cycle** (`04-iteration-cycle.md.prompt`)
+- Move to next scenario within feature
+- Repeat TDD cycle until feature complete
+- Move to next feature file
+
+## Validation Tools
+
+Always use these validation prompts after completing scenarios:
+- `validation/domain-model-check.md.prompt`: Ensure alignment with domain design
+- `validation/clean-architecture-check.md.prompt`: Verify dependency directions
+- `validation/test-responsibility-check.md.prompt`: Check test/production boundaries
+
+## Reference Materials
+
+- `reference/pytest-commands.md.prompt`: Pytest execution commands
+- `reference/do-dont-rules.md.prompt`: Implementation rules and guidelines
+
+## Key Project Documents
+
+These documents contain the design specifications:
+- `docs/domain-model.md`: Business entities, rules, and relationships
+- `docs/clean-architecture-structure.md`: Code organization and dependencies  
+- `docs/user-stories/`: Detailed technical specifications per feature
+- `docs/prd.md`: Business requirements and context
+
+## Usage Instructions
+
+1. **Choose your starting point**:
+   - New project: Start with `01-user-stories-to-features.md.prompt`
+   - Existing features: Jump to appropriate phase prompt
+   - Problem diagnosis: Use validation prompts
+
+2. **Follow phase sequence**: Each prompt guides to the next logical step
+
+3. **Validate frequently**: Use validation prompts after each completed scenario
+
+4. **Reference documents**: Each prompt specifies which project documents to read
+
+## Success Criteria
+
+- All user story scenarios implemented as passing BDD tests
+- Clean Architecture principles maintained throughout
+- All business rules properly enforced in domain layer
+- Test responsibilities clearly separated from production code
+
+---
+
+**Remember**: Build incrementally, validate continuously, refactor fearlessly.
