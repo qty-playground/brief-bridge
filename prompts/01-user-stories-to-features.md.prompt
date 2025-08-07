@@ -121,6 +121,43 @@ Feature: Submit Command
 - [ ] Gherkin syntax validated
 - [ ] JSON payloads properly formatted
 
+## AI Assistant Behavior Guidelines
+
+### After Feature File Creation
+When you complete the feature file creation, you MUST:
+
+1. **Commit your changes** using git with descriptive commit message
+2. **Report progress** using this exact format:
+
+```
+## Progress Report
+
+**Current Phase:** Phase 1 - User Stories to Feature Files
+**What we completed:** [e.g., "Created submit_command_use_case feature file with 3 scenarios"]
+**Next Phase:** Phase 2 - Walking Skeleton Creation
+**What we plan to do:** [e.g., "Create pytest-bdd test infrastructure with step definition skeletons"]
+
+**Feature Created:**
+- **User Story:** [User story filename]
+- **Feature File:** tests/{feature}/story.feature
+- **Scenarios Count:** [Number of scenarios converted]
+- **All scenarios marked:** @skip ✅
+
+**Validation Results:**
+- ✅ Feature directory created with valid Python module name
+- ✅ All scenarios from user story converted to Gherkin
+- ✅ JSON payloads properly formatted in docstrings
+- ✅ Gherkin syntax validated
+```
+
+3. **Always validate** the created feature file for syntax errors before proceeding
+
+### Multiple Feature Files
+If converting multiple user stories in sequence, provide progress report after EACH feature file creation to maintain clear tracking of which features have been converted and which remain pending.
+
+### Memory Building Requirement
+This phase establishes the foundation for all subsequent BDD development. Clear reporting ensures proper setup and helps track which user stories have been successfully converted to executable feature specifications.
+
 ## Next Step
 After completing this phase, proceed to:
 `02-walking-skeleton.md.prompt` - Create pytest-bdd testing infrastructure

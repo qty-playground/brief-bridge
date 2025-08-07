@@ -207,3 +207,59 @@ pytest  # Full test suite must pass
 
 **If all features complete:**
 → 🎉 Implementation finished! Run final system validation.
+
+## AI Assistant Behavior Guidelines
+
+### After Each Iteration Decision
+When you complete any major decision or transition in this phase, you MUST:
+
+1. **Commit any changes** (if applicable) using git with descriptive commit message  
+2. **Report progress** using this exact format:
+
+```
+## Iteration Progress Report
+
+**Current Phase:** Phase 4 - Iteration Cycle Management
+**Action Taken:** [e.g., "Activated next scenario" / "Selected next feature" / "Completed feature validation"]
+**What we completed:** [Describe the decision made and actions taken]
+**Next Phase:** [e.g., "Return to Phase 3 TDD" / "Return to Phase 1 Feature Creation" / "Validation Check"]
+**What we plan to do:** [Describe next concrete action]
+
+**Current Status:**
+- **Feature:** [Current feature name]
+- **Completed Scenarios:** [List completed scenarios]
+- **Active Scenario:** [Current @wip scenario, if any]
+- **Remaining Scenarios:** [List @skip scenarios]
+
+**Decision Rationale:** [Why this next step was chosen]
+```
+
+### After Feature Completion
+When you complete an entire feature file, you MUST:
+
+1. **Feature completion commit** with comprehensive message
+2. **Feature completion report**:
+
+```
+## Feature Completion Report
+
+**Completed Feature:** [Feature name]
+**Phase Status:** ✅ Feature Complete
+**What we completed:** [Summary of all scenarios implemented]
+**Next Phase:** [Next feature selection or system completion]
+**What we plan to do:** [Next feature to implement or completion activities]
+
+**Feature Validation Results:**
+- ✅ All scenarios implemented (no @skip markers remaining)
+- ✅ pytest (full suite passing)
+- ✅ All business rules for feature enforced
+- ✅ Clean Architecture structure maintained
+
+**Business Impact:**
+- **User Story Fulfilled:** [Reference to user story]
+- **Business Rules Implemented:** [List key business rules]
+- **System Capabilities Added:** [What the system can now do]
+```
+
+### Memory Building Requirement
+This phase involves critical decision-making about project direction. Detailed reporting ensures clear tracking of feature completion progress and helps maintain focus on the overall system development goals.

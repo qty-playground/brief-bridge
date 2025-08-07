@@ -286,6 +286,68 @@ pytest  # Run complete test suite
 - ❌ Implement business rules before GREEN Stage 2
 - ❌ Add features not required by current scenario
 
+## AI Assistant Behavior Guidelines
+
+### After Each TDD Phase Completion
+When you complete any TDD phase (RED, GREEN Stage 1, GREEN Stage 2, REFACTOR), you MUST:
+
+1. **Commit your changes** using git with descriptive commit message
+2. **Report progress** using this exact format:
+
+```
+## Progress Report
+
+**Current Phase:** Phase 3 - TDD Implementation
+**TDD Stage:** [RED / GREEN Stage 1 / GREEN Stage 2 / REFACTOR]
+**Scenario:** [e.g., "Submit command to online idle client"]
+**What we completed:** [Describe what was just finished, e.g., "GREEN Stage 1 - Created CA infrastructure shell with fake implementations"]
+**Next Phase:** [e.g., "GREEN Stage 2" or "REFACTOR" or "Scenario Completion"]
+**What we plan to do:** [Describe next concrete action, e.g., "Implement real business rules for client.registration and command.target_validation"]
+
+**Test Status:** [✅ pytest -m wip PASSING / ❌ FAILING]
+**Files modified:** 
+- brief_bridge/domain/entities/...
+- brief_bridge/infrastructure/...
+- tests/{feature}/given_steps.py
+
+**Business Rules Implemented:** [List specific business rules addressed]
+```
+
+3. **Always run the appropriate test command** and report results:
+   - During TDD: `pytest -m wip`
+   - After completion: `pytest` (full suite)
+
+### After Scenario Completion
+When you complete an entire scenario, you MUST:
+
+1. **Final commit** with scenario completion message
+2. **Full validation report**:
+
+```
+## Scenario Completion Report
+
+**Completed Scenario:** [Scenario name]
+**Feature:** [Feature name]
+**Phase Status:** ✅ Scenario Complete - Ready for next iteration
+**What we completed:** [Full scenario implementation summary]
+**Next Phase:** Phase 4 - Iteration Cycle
+**What we plan to do:** [Next scenario selection or feature completion]
+
+**Validation Results:**
+- ✅ pytest -m wip removed (no WIP scenarios)
+- ✅ pytest (full suite passing)
+- ✅ All TDD phases completed
+- ✅ Business rules properly implemented
+
+**Architecture Status:**
+- ✅ Clean Architecture maintained
+- ✅ Domain logic in correct layer
+- ✅ Test responsibilities properly separated
+```
+
+### Memory Building Requirement
+This detailed reporting is CRITICAL for maintaining context across interactions. The TDD cycle is complex and requires precise tracking of which phase you're in and what has been accomplished.
+
 ## Next Step
 After completing this scenario, proceed to:
 `04-iteration-cycle.md.prompt` - Move to next scenario or feature

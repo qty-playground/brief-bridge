@@ -298,6 +298,36 @@ pytest tests/{feature}/ --collect-only
 python -m pytest tests/{feature}/ --collect-only -v
 ```
 
+## AI Assistant Behavior Guidelines
+
+### After Each Major Step Completion
+When you complete any major step in this phase (Step 1-6), you MUST:
+
+1. **Commit your changes** using git with descriptive commit message
+2. **Report progress** using this exact format:
+
+```
+## Progress Report
+
+**Current Phase:** Phase 2 - Walking Skeleton Creation
+**What we completed:** [Describe what was just finished, e.g., "Created test infrastructure for submit_command feature with all step definition skeletons"]
+**Next Phase:** [e.g., "Phase 3 - TDD Implementation" or "Continue Phase 2 - Step 5 Validation"]
+**What we plan to do:** [Describe next concrete action, e.g., "Begin TDD cycle with first scenario activation and RED phase"]
+
+**Files created/modified:** 
+- tests/{feature}/test_{feature}.py
+- tests/{feature}/given_steps.py
+- tests/{feature}/when_steps.py 
+- tests/{feature}/then_steps.py
+
+**Validation status:** [✅ Passed / ❌ Failed / ⏳ Pending]
+```
+
+3. **Always indicate the specific step** you just completed and the next step you will take
+
+### Memory Building Requirement
+This reporting helps build context memory across interactions. Even if the task seems simple, ALWAYS provide this progress report after completing each major step to maintain clear development trajectory.
+
 ## Next Step
 After completing this phase, proceed to:
 `03-tdd-red-green-refactor.md.prompt` - Begin TDD implementation cycle
