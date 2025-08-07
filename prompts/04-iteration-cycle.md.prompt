@@ -213,8 +213,8 @@ pytest  # Full test suite must pass
 ### After Each Iteration Decision
 When you complete any major decision or transition in this phase, you MUST:
 
-1. **Commit any changes** (if applicable) using git with descriptive commit message  
-2. **Report progress** using this exact format:
+1. **Commit any changes FIRST** (if applicable) using git with descriptive commit message  
+2. **Immediately report progress** (no user confirmation needed) using this exact format:
 
 ```
 ## Iteration Progress Report
@@ -234,11 +234,13 @@ When you complete any major decision or transition in this phase, you MUST:
 **Decision Rationale:** [Why this next step was chosen]
 ```
 
+3. **Automatically execute the decided next action** (no user confirmation needed)
+
 ### After Feature Completion
 When you complete an entire feature file, you MUST:
 
-1. **Feature completion commit** with comprehensive message
-2. **Feature completion report**:
+1. **Feature completion commit FIRST** with comprehensive message
+2. **Immediately provide feature completion report** (no user confirmation needed):
 
 ```
 ## Feature Completion Report
@@ -261,5 +263,11 @@ When you complete an entire feature file, you MUST:
 - **System Capabilities Added:** [What the system can now do]
 ```
 
-### Memory Building Requirement
-This phase involves critical decision-making about project direction. Detailed reporting ensures clear tracking of feature completion progress and helps maintain focus on the overall system development goals.
+3. **Automatically proceed to next feature or completion activities** (no user confirmation needed)
+
+### Workflow Requirements
+- **SEQUENCE CRITICAL**: Always commit FIRST, then report progress
+- **DECISION EXECUTION**: After reporting iteration decision, immediately execute the decided action  
+- **FEATURE TRANSITIONS**: After feature completion report, immediately proceed to next feature selection
+- **NO CONFIRMATION NEEDED**: Never wait for user approval during iteration management
+- **CONTINUOUS PROGRESS**: Maintain development momentum with automated flow between features

@@ -30,282 +30,119 @@ Create this directory structure for `tests/{feature}/`:
 tests/{feature}/
 ├── __init__.py                     # Empty file
 ├── story.feature                   # Already exists
-├── test_{feature}.py              # Main orchestrator with step wrappers
-└── steps/                          # Independent step implementations
-    ├── __init__.py                 # Empty file
-    ├── create_client_with_info.py  # Screaming Architecture implementation
-    ├── post_to_endpoint.py         # Screaming Architecture implementation
-    └── verify_response_status.py   # Screaming Architecture implementation
+└── test_{feature}.py              # Main test file with step definitions
 ```
 
-**Architecture Concept:**
-- `test_{feature}.py`: Contains pytest-bdd step wrappers that delegate to actual implementations
-- `steps/`: Contains independent, screaming architecture step implementations
-- Each step implementation file has a descriptive name that screams its business intent
-
-### Step 3: Implement Main Test Orchestrator with Step Wrappers
+### Step 3: Implement Main Test Orchestrator
 
 **File:** `tests/{feature}/test_{feature}.py`
 ```python
 import pytest
-from pytest_bdd import scenarios, given, when, then
-
-# Import step implementations
-from .steps.create_client_with_info import create_client_with_specific_status_and_availability
-from .steps.post_to_endpoint import execute_http_post_with_json_payload
-from .steps.verify_response_status import assert_response_status_code_matches
+from pytest_bdd import scenarios, given, when, then, parsers
 
 # Load all scenarios from feature file
 scenarios('story.feature')
 
-# Step wrappers - delegate to actual implementations
-@given('client "{client_id}" exists with status "{status}" and availability "{availability}"')
-def given_client_exists_with_status_and_availability(client_id, status, availability):
-    """Wrapper that delegates to screaming architecture implementation."""
-    create_client_with_specific_status_and_availability.invoke(client_id, status, availability)
+# Test context fixture
+@pytest.fixture
+def context():
+    return type('Context', (), {
+        'response': None,
+        'test_data': {},
+        'entities': []
+    })()
 
-@when('I POST to "{endpoint}" with: {json_payload}')
-def when_i_post_to_endpoint_with_payload(endpoint, json_payload):
-    """Wrapper that delegates to screaming architecture implementation."""
-    execute_http_post_with_json_payload.invoke(endpoint, json_payload)
+# Step definitions with direct implementation
+@given(parsers.parse('client "{client_id}" exists with status "{status}"'))
+def given_client_exists(context, client_id, status):
+    raise NotImplementedError("Step not implemented")
 
-@then('response status code should be {status_code:d}')
-def then_response_status_code_should_be(status_code):
-    """Wrapper that delegates to screaming architecture implementation."""
-    assert_response_status_code_matches.invoke(status_code)
+@when(parsers.parse('I POST to "{endpoint}" with:'))
+def when_post_to_endpoint(context, endpoint, docstring):
+    raise NotImplementedError("Step not implemented")
+
+@then(parsers.parse('response status code should be {status_code:d}'))
+def then_response_status_code(context, status_code):
+    raise NotImplementedError("Step not implemented")
 ```
 
-### Step 4: Create Step Implementation Skeletons
+### Step 4: Key Implementation Notes
 
-**IMPORTANT: Step Implementation Architecture**
-- **Separation of Concerns**: Wrapper functions (in main file) vs Implementation functions (in steps/)
-- **Screaming Architecture**: Step implementation file names must clearly scream business intent
-- **AI-friendly rewriting**: Design for complete file replacement rather than incremental edits
-- **Independent Modules**: Each step implementation is completely self-contained
-- **Invoke Pattern**: All implementations expose an `invoke()` function for delegation
+**Pytest-BDD Critical Requirements:**
+- Use `parsers.parse()` for parameter extraction
+- Use `docstring` parameter name for multiline strings (FIXED NAME)  
+- Use `datatable` parameter name for data tables (FIXED NAME)
+- Use fixtures for test context instead of global variables
+- All step functions should accept `context` fixture as first parameter
 
-**Step Implementation Structure:**
-
-**Example: `steps/create_client_with_info.py`** - Complete file template:
+**Step Definition Patterns:**
 ```python
-"""
-Create Client with Specific Status and Availability
-Screaming Architecture: File name describes exact business operation
-Independent step implementation that can be completely rewritten by AI
-"""
+# Simple parameter extraction
+@given(parsers.parse('client "{client_id}" exists'))
+def step_name(context, client_id):
+    raise NotImplementedError("Step not implemented")
 
-class CreateClientWithSpecificStatusAndAvailability:
-    """
-    Business operation: Create and register a client with specified status and availability.
-    This implementation is completely independent and self-contained.
-    """
-    
-    def invoke(self, client_id: str, status: str, availability: str):
-        """
-        Main entry point for creating client with specific status and availability.
-        
-        Args:
-            client_id: Unique identifier for the client
-            status: Client status (ONLINE, OFFLINE, etc.)
-            availability: Client availability (IDLE, BUSY, etc.)
-        """
-        raise NotImplementedError("Step not implemented - create_client_with_specific_status_and_availability")
+# Multiline string handling
+@when(parsers.parse('I POST to "{endpoint}" with:'))
+def step_name(context, endpoint, docstring):  # docstring = FIXED NAME
+    raise NotImplementedError("Step not implemented")
 
-
-# Export the implementation instance
-create_client_with_specific_status_and_availability = CreateClientWithSpecificStatusAndAvailability()
+# Data table handling  
+@given('following clients exist:')
+def step_name(context, datatable):  # datatable = FIXED NAME
+    raise NotImplementedError("Step not implemented")
 ```
 
-**Example: `steps/post_to_endpoint.py`** - Complete file template:
-```python
-"""
-Execute HTTP POST with JSON Payload
-Screaming Architecture: File name describes exact system interaction
-Independent step implementation that can be completely rewritten by AI
-"""
-
-class ExecuteHttpPostWithJsonPayload:
-    """
-    System interaction: Execute HTTP POST request with JSON payload.
-    Independent action step - captures response for verification steps.
-    """
-    
-    def invoke(self, endpoint: str, json_payload: str):
-        """
-        Main entry point for executing HTTP POST with JSON payload.
-        
-        Args:
-            endpoint: HTTP endpoint to post to (e.g., "/commands")
-            json_payload: JSON payload as string
-        """
-        raise NotImplementedError("Step not implemented - execute_http_post_with_json_payload")
-
-
-# Export the implementation instance
-execute_http_post_with_json_payload = ExecuteHttpPostWithJsonPayload()
-```
-
-**Example: `steps/verify_response_status.py`** - Complete file template:
-```python
-"""
-Assert Response Status Code Matches Expected
-Screaming Architecture: File name describes exact verification operation
-Independent step implementation that can be completely rewritten by AI
-"""
-
-class AssertResponseStatusCodeMatches:
-    """
-    Verification operation: Assert HTTP response status code matches expected value.
-    Independent verification step that accesses shared test context.
-    """
-    
-    def invoke(self, expected_status_code: int):
-        """
-        Main entry point for verifying response status code.
-        
-        Args:
-            expected_status_code: Expected HTTP status code (e.g., 200, 400, 500)
-        """
-        raise NotImplementedError("Step not implemented - assert_response_status_code_matches")
-
-
-# Export the implementation instance  
-assert_response_status_code_matches = AssertResponseStatusCodeMatches()
-```
-
-**Additional Step Implementation Examples:**
-
-**`steps/verify_response_body_matches.py`**:
-```python
-"""
-Verify Response Body Matches JSON Schema
-Screaming Architecture: File name describes exact validation operation
-"""
-
-class VerifyResponseBodyMatchesJsonSchema:
-    def invoke(self, json_schema: str):
-        raise NotImplementedError("Step not implemented - verify_response_body_matches_json_schema")
-
-verify_response_body_matches_json_schema = VerifyResponseBodyMatchesJsonSchema()
-```
-
-**`steps/check_command_record_exists.py`**:
-```python
-"""
-Check Command Record Exists With Properties
-Screaming Architecture: File name describes exact business verification
-"""
-
-class CheckCommandRecordExistsWithProperties:
-    def invoke(self, properties: str):
-        raise NotImplementedError("Step not implemented - check_command_record_exists_with_properties")
-
-check_command_record_exists_with_properties = CheckCommandRecordExistsWithProperties()
-```
-
-### Step 5: Screaming Architecture & Independence Requirements
-
-**Each step implementation MUST follow these principles:**
-
-**Independence Requirements:**
-- **Self-contained Class**: Each implementation is a complete, independent class
-- **No shared state**: No dependencies between step implementations  
-- **Complete Module**: Each step file contains everything needed for its operation
-- **AI Rewritable**: Designed for complete file replacement by AI assistants
-
-**Screaming Architecture Requirements:**
-- **Descriptive file names**: `create_client_with_info.py` not `client_setup.py`
-- **Business-focused naming**: File name must scream the business operation it performs
-- **Class name consistency**: Class name matches the business operation
-- **Clear intent documentation**: Purpose is obvious from file and class names
-
-**Invoke Pattern Standards:**
-- **Single entry point**: Each implementation exposes exactly one `invoke()` method
-- **Type hints**: All parameters and return types clearly specified
-- **Parameter mapping**: Parameters match exactly what's passed from Gherkin step
-- **Error handling**: Proper NotImplementedError during skeleton phase
-
-**Step Implementation Architecture:**
-```
-test_{feature}.py           # Step wrappers with @given/@when/@then decorators
-└── steps/                  # Independent implementations
-    ├── business_operation_1.py    # Screaming architecture naming
-    ├── business_operation_2.py    # Each file is completely independent  
-    └── business_operation_3.py    # AI can rewrite entire file safely
-```
-
-**AI-Friendly Design:**
-- **Complete file templates**: Each step implementation is a complete, independent file
-- **No incremental changes**: AI replaces entire implementation file, not portions
-- **Clear boundaries**: Each step implementation has no dependencies on others
-- **Explicit exports**: Each file exports exactly one implementation instance
-
-### Step 6: Validation
+### Step 5: Validation
 
 Test the skeleton structure:
 ```bash
 # Should discover scenarios but not run them (all @skip)
-pytest tests/{feature}/ --collect-only
+python -m pytest tests/{feature}/ --collect-only
 
 # Verify step collection works
-pytest tests/{feature}/ --collect-only -v
+python -m pytest tests/{feature}/ --collect-only -v
 
-# Test import structure works
-python -c "from tests.{feature}.test_{feature} import *; print('Imports successful')"
+# Test a skipped scenario
+python -m pytest tests/{feature}/ -v
 ```
 
 Expected output:
 - All scenarios discovered by pytest-bdd
 - All scenarios marked as SKIPPED due to @skip marker
-- No import errors from step implementations
-- Step wrapper functions correctly reference implementation classes
-- All step implementations raise NotImplementedError when invoked
+- No import errors from test file
+- All step definitions correctly matched to feature file steps
 
 ## Implementation Guidelines
 
-### Step Implementation Naming
-Convert Gherkin steps to screaming architecture file names:
-- `Given client "{id}" exists with status "{status}"` → `steps/create_client_with_info.py`
-- `When I POST to "{endpoint}" with JSON` → `steps/post_to_endpoint.py`  
-- `Then response status code should be {code}` → `steps/verify_response_status.py`
+### Module Naming (Screaming Architecture)
+Use descriptive module names that clearly indicate business intent:
+- `Given client exists` → file could be named `create_client_setup.py`
+- `When I POST to endpoint` → file could be named `execute_http_request.py`
+- `Then response status code` → file could be named `verify_response_status.py`
 
-### File and Class Naming Pattern
-```python
-# File: steps/business_operation_name.py
-class BusinessOperationName:
-    def invoke(self, param1, param2): pass
-
-business_operation_name = BusinessOperationName()
-```
-
-### Parameter Handling
-- Step wrapper functions receive parameters from pytest-bdd
-- Wrapper functions pass parameters directly to `implementation.invoke()`
-- Implementation classes receive typed parameters matching Gherkin placeholders
-- JSON docstrings passed as string parameters to implementation
-
-### Reusable Implementation Pattern
-Each step implementation can be reused across multiple scenarios and features by importing the implementation class and calling its `invoke()` method from different wrapper functions.
+**The key is: file names should clearly describe what they do**
 
 ## Completion Checklist
 - [ ] Feature directory created with correct structure
-- [ ] Main test orchestrator (`test_{feature}.py`) created with step wrappers
-- [ ] Steps subdirectory created with `__init__.py`
-- [ ] All required step implementations created in `steps/` directory
-- [ ] Each step implementation follows screaming architecture naming
-- [ ] Each implementation class has `invoke()` method raising NotImplementedError
-- [ ] Step wrappers correctly import and delegate to implementations
+- [ ] Main test file (`test_{feature}.py`) created with step definitions
+- [ ] Context fixture created for test data sharing
+- [ ] All step definitions use `parsers.parse()` for parameter extraction
+- [ ] Step definitions handle `docstring` and `datatable` parameters correctly
 - [ ] pytest can discover scenarios (but skips them due to @skip markers)
-- [ ] No import errors from test orchestrator or step implementations
-- [ ] All step implementations are completely independent
+- [ ] No import errors from test file
+- [ ] All step definitions raise NotImplementedError
 
 ## Verification Commands
 ```bash
 # Should show discovered but skipped scenarios
-pytest tests/{feature}/ --collect-only
+python -m pytest tests/{feature}/ --collect-only
 
 # Should show no errors
 python -m pytest tests/{feature}/ --collect-only -v
+
+# Should show all scenarios as skipped
+python -m pytest tests/{feature}/ -v
 ```
 
 ## AI Assistant Behavior Guidelines
@@ -313,8 +150,8 @@ python -m pytest tests/{feature}/ --collect-only -v
 ### After Each Major Step Completion
 When you complete any major step in this phase (Step 1-6), you MUST:
 
-1. **Commit your changes** using git with descriptive commit message
-2. **Report progress** using this exact format:
+1. **Commit your changes FIRST** using git with descriptive commit message
+2. **Immediately report progress** (no user confirmation needed) using this exact format:
 
 ```
 ## Progress Report
@@ -333,10 +170,13 @@ When you complete any major step in this phase (Step 1-6), you MUST:
 **Validation status:** [✅ Passed / ❌ Failed / ⏳ Pending]
 ```
 
-3. **Always indicate the specific step** you just completed and the next step you will take
+3. **Automatically proceed to next step** after reporting (no user confirmation needed)
 
-### Memory Building Requirement
-This reporting helps build context memory across interactions. Even if the task seems simple, ALWAYS provide this progress report after completing each major step to maintain clear development trajectory.
+### Workflow Requirement
+- **SEQUENCE CRITICAL**: Always commit FIRST, then report progress
+- **AUTOMATIC FLOW**: After reporting, immediately continue to next step
+- **NO CONFIRMATION NEEDED**: Do not wait for user approval to proceed
+- **MEMORY BUILDING**: This structured reporting maintains context across interactions
 
 ## Next Step
 After completing this phase, proceed to:

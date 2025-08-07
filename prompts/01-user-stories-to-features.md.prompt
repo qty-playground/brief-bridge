@@ -126,8 +126,8 @@ Feature: Submit Command
 ### After Feature File Creation
 When you complete the feature file creation, you MUST:
 
-1. **Commit your changes** using git with descriptive commit message
-2. **Report progress** using this exact format:
+1. **Commit your changes FIRST** using git with descriptive commit message
+2. **Immediately report progress** (no user confirmation needed) using this exact format:
 
 ```
 ## Progress Report
@@ -151,12 +151,17 @@ When you complete the feature file creation, you MUST:
 ```
 
 3. **Always validate** the created feature file for syntax errors before proceeding
+4. **Automatically proceed to next phase** (no user confirmation needed)
 
 ### Multiple Feature Files
-If converting multiple user stories in sequence, provide progress report after EACH feature file creation to maintain clear tracking of which features have been converted and which remain pending.
+If converting multiple user stories in sequence, provide progress report after EACH feature file creation, then automatically continue to next feature conversion.
 
-### Memory Building Requirement
-This phase establishes the foundation for all subsequent BDD development. Clear reporting ensures proper setup and helps track which user stories have been successfully converted to executable feature specifications.
+### Workflow Requirements
+- **SEQUENCE CRITICAL**: Always commit FIRST, then report progress
+- **AUTOMATIC FLOW**: After reporting, immediately proceed to next phase or next feature
+- **VALIDATION REQUIRED**: Always validate feature file syntax before proceeding
+- **NO CONFIRMATION NEEDED**: Do not wait for user approval to continue
+- **CONTINUOUS CONVERSION**: When multiple features needed, convert them sequentially with individual reports
 
 ## Next Step
 After completing this phase, proceed to:

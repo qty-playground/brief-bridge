@@ -1,0 +1,316 @@
+# Pytest-BDD Best Practices Reference
+
+## Overview
+This document provides pytest-bdd implementation patterns and best practices based on proven examples.
+
+## Step Definition Syntax
+
+### Basic Step Definitions
+
+**Correct Pattern:**
+```python
+import pytest
+from pytest_bdd import scenarios, given, when, then, parsers
+
+# Load scenarios
+scenarios('story.feature')
+
+# Test context fixture
+@pytest.fixture
+def context():
+    """Test context for sharing data between BDD steps"""
+    return type('Context', (), {
+        'response': None,
+        'client_data': None,
+        'test_objects': []
+    })()
+```
+
+### Step Definition Patterns
+
+#### 1. Simple String Matching
+```python
+@given('client is online')
+def given_client_is_online(context):
+    context.client_status = 'ONLINE'
+```
+
+#### 2. Parameter Extraction
+```python
+@given(parsers.parse('client "{client_id}" is online'))
+def given_client_online(context, client_id):
+    context.client_id = client_id
+    context.client_status = 'ONLINE'
+```
+
+#### 3. Type Conversion
+```python
+@then(parsers.parse('response status code should be {status_code:d}'))
+def then_status_code(context, status_code):
+    assert context.response.status_code == status_code
+```
+
+#### 4. Docstring Handling (Multiline Strings)
+```python
+# Feature file:
+# Given client exists with data:
+#   """
+#   {"client_id": "123", "status": "ONLINE"}
+#   """
+
+@given(parsers.parse('client exists with data:'))
+def given_client_with_data(context, docstring):
+    """IMPORTANT: 'docstring' is a FIXED parameter name - cannot be changed"""
+    import json
+    client_data = json.loads(docstring)
+    context.client_data = client_data
+```
+
+**CRITICAL: Docstring Parameter Name Rules**
+- The parameter MUST be named `docstring` - this is pytest-bdd convention
+- You CANNOT rename it to `json_data`, `content`, or any other name
+- pytest-bdd automatically injects multiline strings into the `docstring` parameter
+
+#### 5. Data Tables
+```python
+# Feature file:
+# Given following clients exist:
+#   | client_id | status  | type    |
+#   | client-1  | ONLINE  | desktop |
+#   | client-2  | OFFLINE | mobile  |
+
+@given('following clients exist:')
+def given_clients_exist(context, datatable):
+    """datatable parameter automatically receives the data table"""
+    # datatable is a list of lists: [['client_id', 'status', 'type'], ['client-1', 'ONLINE', 'desktop'], ...]
+    headers = datatable[0]
+    for row in datatable[1:]:
+        client_dict = dict(zip(headers, row))
+        context.test_objects.append(client_dict)
+```
+
+## HTTP API Testing Patterns
+
+### FastAPI Test Client Integration
+```python
+import pytest
+from fastapi.testclient import TestClient
+from your_app.main import app
+
+@pytest.fixture
+def test_client():
+    """FastAPI test client"""
+    return TestClient(app)
+
+@pytest.fixture 
+def api_context(test_client):
+    """API test context with HTTP client"""
+    return type('ApiContext', (), {
+        'client': test_client,
+        'last_response': None,
+        'test_data': {}
+    })()
+
+@when(parsers.parse('I POST to "{endpoint}" with:'))
+def when_post_to_endpoint(api_context, endpoint, docstring):
+    """Execute HTTP POST with JSON payload from docstring
+    IMPORTANT: 'docstring' parameter name is FIXED - cannot be renamed"""
+    import json
+    payload = json.loads(docstring)
+    response = api_context.client.post(endpoint, json=payload)
+    api_context.last_response = response
+
+@then(parsers.parse('response status code should be {status_code:d}'))
+def then_response_status(api_context, status_code):
+    """Verify HTTP response status code"""
+    assert api_context.last_response.status_code == status_code
+
+@then(parsers.parse('response body should contain:'))
+def then_response_body_contains(api_context, docstring):
+    """Verify response body contains expected JSON structure
+    IMPORTANT: 'docstring' parameter name is FIXED - cannot be renamed"""
+    import json
+    expected = json.loads(docstring)
+    actual = api_context.last_response.json()
+    
+    for key, expected_value in expected.items():
+        assert key in actual, f"Missing key: {key}"
+        
+        # Handle placeholder values like <uuid>
+        if isinstance(expected_value, str) and expected_value.startswith('<') and expected_value.endswith('>'):
+            # For placeholders, just verify key exists and has value
+            assert actual[key] is not None, f"Key {key} should have value"
+        else:
+            # For concrete values, check exact match
+            assert actual[key] == expected_value, f"Expected {key}={expected_value}, got {actual[key]}"
+```
+
+## Common Patterns
+
+### 1. Database Setup and Teardown
+```python
+@given(parsers.parse('database contains {table_name} data:'))
+def given_database_data(db_session, table_name, datatable):
+    """Set up database data from data table
+    IMPORTANT: 'datatable' parameter name is FIXED - cannot be renamed"""
+    headers = datatable[0]
+    for row in datatable[1:]:
+        record_dict = dict(zip(headers, row))
+        # Create database record
+        # db_session.add(YourModel(**record_dict))
+    # db_session.commit()
+```
+
+### 2. Context Data Verification
+```python
+@then(parsers.parse('context should contain {key} with value "{expected_value}"'))
+def then_context_contains(context, key, expected_value):
+    """Verify test context contains expected data"""
+    assert hasattr(context, key), f"Context missing key: {key}"
+    actual_value = getattr(context, key)
+    assert str(actual_value) == expected_value
+```
+
+### 3. Complex JSON Matching
+```python
+@then(parsers.parse('response should match schema:'))
+def then_response_matches_schema(api_context, docstring):
+    """Verify response matches JSON schema pattern
+    IMPORTANT: 'docstring' parameter name is FIXED - cannot be renamed"""
+    import json
+    expected_schema = json.loads(docstring)
+    actual_response = api_context.last_response.json()
+    
+    def matches_schema(actual, expected):
+        if isinstance(expected, dict):
+            for key, expected_value in expected.items():
+                assert key in actual, f"Missing key: {key}"
+                matches_schema(actual[key], expected_value)
+        elif isinstance(expected, list):
+            assert isinstance(actual, list), "Expected list"
+            if expected:  # If expected list has items, validate structure
+                for item in actual:
+                    matches_schema(item, expected[0])
+        elif isinstance(expected, str) and expected.startswith('<') and expected.endswith('>'):
+            # Placeholder - just verify non-null
+            assert actual is not None
+        else:
+            assert actual == expected
+    
+    matches_schema(actual_response, expected_schema)
+```
+
+## File Organization
+
+### Recommended Structure
+```
+tests/
+├── feature_name/
+│   ├── __init__.py
+│   ├── story.feature              # BDD scenarios
+│   ├── test_feature_name.py       # Step definitions
+│   ├── conftest.py               # Feature-specific fixtures
+│   └── support/
+│       ├── __init__.py
+│       ├── context_helpers.py     # Context management utilities
+│       └── data_builders.py       # Test data creation helpers
+```
+
+### Feature-Specific Fixtures
+```python
+# tests/feature_name/conftest.py
+import pytest
+
+@pytest.fixture
+def feature_context():
+    """Feature-specific test context"""
+    return type('FeatureContext', (), {
+        'entities': {},
+        'responses': [],
+        'test_state': {}
+    })()
+
+@pytest.fixture
+def feature_dependencies():
+    """Set up feature-specific dependencies"""
+    # Set up repositories, services, etc.
+    pass
+```
+
+## Best Practices
+
+### DO ✅
+- Use `parsers.parse()` for parameter extraction
+- Use fixtures for test context instead of global variables
+- Keep step definitions focused and single-purpose
+- Use descriptive parameter names that match business language
+- Handle docstrings and datatables explicitly as function parameters
+- Use type hints in parsers (e.g., `{status_code:d}`)
+- Structure test data using fixtures and builders
+
+### DON'T ❌
+- Use global variables for test state
+- Mix business logic into step definitions
+- Ignore type conversion for extracted parameters
+- Use magic strings or hardcoded values
+- Couple step definitions to specific test scenarios
+- Put complex logic directly in step functions
+
+## Error Handling
+
+### Common Issues and Solutions
+
+#### 1. StepDefinitionNotFoundError
+```python
+# ❌ Wrong: Missing parsers.parse()
+@given('client "{client_id}" exists')
+
+# ✅ Correct: Use parsers.parse()
+@given(parsers.parse('client "{client_id}" exists'))
+```
+
+#### 2. Fixture Not Found Error
+```python
+# ❌ Wrong: Expecting parameter that doesn't exist
+@when('I perform action')
+def step_perform_action(non_existent_param):
+    pass
+
+# ✅ Correct: Use proper fixtures
+@when('I perform action')  
+def step_perform_action(context):
+    pass
+```
+
+#### 3. Docstring Parameter Mismatch
+```python
+# ❌ Wrong: Not expecting docstring parameter
+@given('data exists:')
+def step_data_exists(context):
+    pass  # docstring will cause fixture error
+
+# ❌ Wrong: Using wrong parameter name  
+@given('data exists:')
+def step_data_exists(context, json_data):  # WRONG - must be 'docstring'
+    pass
+
+# ✅ Correct: Accept docstring parameter with FIXED name
+@given('data exists:')
+def step_data_exists(context, docstring):  # MUST use 'docstring' name
+    pass
+```
+
+**CRITICAL: Fixed Parameter Names**
+- `docstring` - for multiline strings (""" ... """)
+- `datatable` - for data tables (| ... |)
+- These names are pytest-bdd conventions and CANNOT be changed
+
+## Performance Tips
+
+1. **Use session-scoped fixtures** for expensive setup
+2. **Lazy load test dependencies** in fixtures
+3. **Clean up test data** in fixture teardown
+4. **Use database transactions** for test isolation
+5. **Mock external services** to avoid network calls
+
+This reference provides the foundation for reliable pytest-bdd implementations that follow established patterns and avoid common pitfalls.

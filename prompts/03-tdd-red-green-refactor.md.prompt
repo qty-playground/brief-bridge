@@ -291,8 +291,8 @@ pytest  # Run complete test suite
 ### After Each TDD Phase Completion
 When you complete any TDD phase (RED, GREEN Stage 1, GREEN Stage 2, REFACTOR), you MUST:
 
-1. **Commit your changes** using git with descriptive commit message
-2. **Report progress** using this exact format:
+1. **Commit your changes FIRST** using git with descriptive commit message
+2. **Immediately report progress** (no user confirmation needed) using this exact format:
 
 ```
 ## Progress Report
@@ -316,12 +316,13 @@ When you complete any TDD phase (RED, GREEN Stage 1, GREEN Stage 2, REFACTOR), y
 3. **Always run the appropriate test command** and report results:
    - During TDD: `pytest -m wip`
    - After completion: `pytest` (full suite)
+4. **Automatically proceed to next TDD phase** (no user confirmation needed)
 
 ### After Scenario Completion
 When you complete an entire scenario, you MUST:
 
-1. **Final commit** with scenario completion message
-2. **Full validation report**:
+1. **Final commit FIRST** with scenario completion message
+2. **Immediately provide full validation report** (no user confirmation needed):
 
 ```
 ## Scenario Completion Report
@@ -345,8 +346,14 @@ When you complete an entire scenario, you MUST:
 - ✅ Test responsibilities properly separated
 ```
 
-### Memory Building Requirement
-This detailed reporting is CRITICAL for maintaining context across interactions. The TDD cycle is complex and requires precise tracking of which phase you're in and what has been accomplished.
+3. **Automatically proceed to next phase** after reporting (no user confirmation needed)
+
+### Workflow Requirements
+- **SEQUENCE CRITICAL**: Always commit FIRST, then report progress  
+- **AUTOMATIC TDD FLOW**: After each phase report, immediately continue to next TDD phase
+- **SCENARIO COMPLETION**: After scenario completion report, automatically proceed to iteration cycle
+- **NO CONFIRMATION NEEDED**: Never wait for user approval during TDD cycle
+- **CONTINUOUS MOMENTUM**: Maintain development flow with structured progress tracking
 
 ## Next Step
 After completing this scenario, proceed to:
