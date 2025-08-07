@@ -7,46 +7,45 @@
 ```mermaid
 classDiagram
     class Client {
-        +client_id: client_id
-        +status: client_status
-        +client_info: client_info
-        +last_heartbeat: timestamp
+        +client_id
+        +status
+        +client_info
+        +last_heartbeat
         +register()
         +send_heartbeat()
         +is_available()
-        +execute_command(command)
+        +execute_command()
     }
     
     class Command {
-        +command_id: command_id
-        +content: command_content
-        +target_client_id: client_id
-        +status: execution_status
-        +created_at: timestamp
-        +executed_at: timestamp
+        +command_id
+        +content
+        +target_client_id
+        +status
+        +created_at
+        +executed_at
         +submit()
-        +assign_to_client(client)
-        +mark_as_completed(result)
+        +assign_to_client()
+        +mark_as_completed()
     }
     
     class ExecutionResult {
-        +command_id: command_id
-        +status: execution_status
-        +stdout: string
-        +stderr: string
-        +exit_code: int
-        +duration: duration
-        +completed_at: timestamp
-        +create_from_output(output)
+        +command_id
+        +status
+        +stdout
+        +stderr
+        +exit_code
+        +duration
+        +completed_at
+        +create_from_output()
     }
     
-    %% Value Objects
     class client_id {
-        +value: string
+        +value
     }
     
     class command_id {
-        +value: string
+        +value
     }
     
     class client_status {
@@ -64,40 +63,39 @@ classDiagram
     }
     
     class client_info {
-        +os: string
-        +architecture: string
-        +version: string
+        +os
+        +architecture
+        +version
     }
     
-    %% Domain Services
     class command_dispatcher {
-        +dispatch_command(command, client)
-        +find_available_client(client_id)
+        +dispatch_command()
+        +find_available_client()
     }
     
     class client_health_monitor {
-        +check_client_health(client)
+        +check_client_health()
         +mark_offline_clients()
     }
     
     %% Relationships
-    Client ||--|| client_id : has
-    Client ||--|| client_status : has
-    Client ||--|| client_info : has
-    Command ||--|| command_id : has
-    Command ||--|| client_id : targets
-    Command ||--|| execution_status : has
-    Command ||--o| ExecutionResult : produces
-    ExecutionResult ||--|| command_id : belongs_to
-    ExecutionResult ||--|| execution_status : has
+    Client --> client_id
+    Client --> client_status
+    Client --> client_info
+    Command --> command_id
+    Command --> client_id
+    Command --> execution_status
+    Command --> ExecutionResult
+    ExecutionResult --> command_id
+    ExecutionResult --> execution_status
     
     %% One Client can have 0..1 running Command
-    Client ||--o| Command : "0..1 running"
+    Client --> Command
     
     %% Services dependencies
-    command_dispatcher ..> Client : uses
-    command_dispatcher ..> Command : dispatches
-    client_health_monitor ..> Client : monitors
+    command_dispatcher --> Client
+    command_dispatcher --> Command
+    client_health_monitor --> Client
 ```
 
 ### 關鍵關係說明
