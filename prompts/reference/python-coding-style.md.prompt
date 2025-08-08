@@ -1,0 +1,156 @@
+# Python Coding Style for Clean Architecture
+
+## Core Philosophy
+
+**Code should be self-documenting through excellent naming and clear structure. No comments needed if names are excellent.**
+
+## Critical Import Rules
+
+### Absolute Imports Only
+**ALWAYS use absolute imports for Clean Architecture layer separation**
+
+✅ **Good:**
+```python
+from brief_bridge.domain.entities.client import Client
+from brief_bridge.domain.value_objects.client_id import ClientId
+from brief_bridge.application.services.command_service import CommandService
+from brief_bridge.infrastructure.repositories.client_repository import ClientRepository
+```
+
+❌ **Bad:**
+```python
+from .client import Client
+from ..value_objects.client_id import ClientId
+```
+
+### Module-Level Imports
+**All imports MUST be at module level**
+
+✅ **Good:**
+```python
+from brief_bridge.domain.entities.client import Client
+from brief_bridge.domain.exceptions.client_exceptions import ClientBusyError
+
+def assign_command_to_client(client: Client, command: Command) -> None:
+    if client.is_busy():
+        raise ClientBusyError("Client already executing command")
+    client.assign_command(command)
+```
+
+## Clean Architecture Specific Rules
+
+### Layer Import Direction
+**Follow dependency rule - inner layers never import outer layers**
+
+✅ **Good (Domain layer):**
+```python
+from brief_bridge.domain.value_objects.client_id import ClientId
+from brief_bridge.domain.value_objects.command_content import CommandContent
+```
+
+❌ **Bad (Domain importing Application):**
+```python
+from brief_bridge.application.services.command_service import CommandService  # Wrong!
+```
+
+### Entity and Value Object Naming
+**Use business domain names that explain purpose**
+
+✅ **Good:**
+```python
+@dataclass
+class ClientRegistrationRequest:
+    client_id: ClientId
+    client_info: ClientInfo
+    registration_timestamp: datetime
+
+class Client:
+    def is_available_for_new_command(self) -> bool:
+        return self._status == ClientStatus.ONLINE and not self.has_active_command()
+```
+
+## Self-Documenting Code Rules
+
+### Method Names Should Tell Complete Story
+```python
+# ✅ Excellent - business meaning clear
+def submit_command_to_available_client(self, client_id: ClientId, command_content: CommandContent) -> CommandId:
+    client = self._find_available_client(client_id)
+    command = Command.create_new(command_content, client_id)
+    client.assign_command(command)
+    return command.id
+
+# ❌ Poor - needs comments to understand
+def process(self, id: str, content: str) -> str:
+    # Find client and check if available
+    # Create command and assign to client
+    pass
+```
+
+### Business Rule Methods
+```python
+class Client:
+    def can_accept_new_command(self) -> bool:
+        """Business rule: client.concurrency - one command per client"""
+        return (self._status == ClientStatus.ONLINE and 
+                self._availability == ClientAvailability.IDLE)
+    
+    def mark_as_busy_with_command(self, command: Command) -> None:
+        """Business rule: client state transition"""
+        if self.has_active_command():
+            raise ClientBusyError("Client already executing command")
+        self._current_command = command
+        self._availability = ClientAvailability.BUSY
+```
+
+## Type Hints Mandatory
+
+**ALL functions and variables MUST have type hints for CA clarity**
+
+```python
+def create_client(client_info: ClientInfo) -> Client:
+    client_id: ClientId = ClientId.generate()
+    registration_time: datetime = datetime.utcnow()
+    return Client(client_id, client_info, registration_time)
+```
+
+## Data Structure Rules
+
+### Use Domain Value Objects
+**Never use dictionaries for domain concepts**
+
+✅ **Good:**
+```python
+@dataclass
+class ClientInfo:
+    hostname: str
+    operating_system: OperatingSystem
+    architecture: Architecture
+    capabilities: List[ClientCapability]
+
+@dataclass  
+class CommandRequest:
+    client_id: ClientId
+    content: CommandContent
+    timeout_seconds: int
+```
+
+❌ **Bad:**
+```python
+def create_client(client_data: dict) -> Client:  # What's in the dict?
+    pass
+```
+
+## Key Principles for Clean Architecture
+
+1. **Absolute imports only** - Clear layer boundaries
+2. **Self-documenting names** - Business domain language
+3. **No comments needed** - Code explains itself
+4. **Type hints mandatory** - Contract clarity
+5. **Value objects over dicts** - Domain modeling
+6. **Business method names** - Express domain rules
+7. **Respect dependency rule** - Inner layers stay pure
+
+## Summary
+
+Focus on **absolute imports for layer separation**, **business domain naming**, and **self-documenting code**. Every class and method should clearly express its business purpose without needing comments.

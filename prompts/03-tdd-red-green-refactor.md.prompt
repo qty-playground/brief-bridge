@@ -16,6 +16,7 @@ Use the Read tool to load:
 2. `docs/domain-model.md` - For business rules and entities
 3. `docs/clean-architecture-structure.md` - For code organization
 4. `docs/user-stories/{specified_feature}.md` - For business rules reference
+5. `prompts/reference/python-coding-style.md.prompt` - For coding standards
 
 ## TDD Process Overview
 
@@ -89,7 +90,7 @@ Based on `docs/clean-architecture-structure.md`, create:
 - FastAPI routers (NOT endpoints in main.py)
 - Basic step definition implementations
 
-**Example Implementation:**
+**Example Implementation (following python-coding-style.md.prompt):**
 ```python
 # brief_bridge/domain/entities/client.py
 class Client:
@@ -98,31 +99,31 @@ class Client:
         self._client_info = client_info
     
     @classmethod
-    def create_fake(cls, client_id_str: str, status: str, availability: str):
-        # Minimal fake factory - no business rules
-        fake_id = ClientId(client_id_str)
-        fake_info = ClientInfo.create_default()
-        client = cls(fake_id, fake_info)
-        client._fake_status = status  # Hardcoded - not real business logic
+    def create_fake_for_testing(cls, client_id_str: str, status: str, availability: str) -> Client:
+        fake_client_id = ClientId(client_id_str)
+        fake_client_info = ClientInfo.create_default_linux()
+        client = cls(fake_client_id, fake_client_info)
+        client._fake_status = status
         return client
 
 # brief_bridge/infrastructure/fastapi/routers/clients.py
 from fastapi import APIRouter
+from brief_bridge.application.dto.client_dto import RegisterClientRequest
+
 router = APIRouter()
 
 @router.post("/register")
-async def register_client(request: RegisterClientRequest):
-    # Hardcoded fake response for Stage 1
+async def register_client(request: RegisterClientRequest) -> dict:
     return {"client_id": "fake-uuid", "status": "ONLINE"}
 
 # brief_bridge/main.py - ONLY include router, no business endpoints
-from .infrastructure.fastapi.routers import clients
+from brief_bridge.infrastructure.fastapi.routers import clients
 app.include_router(clients.router, prefix="/clients", tags=["clients"])
 
 # tests/{feature}/step_definitions.py
 @given(parsers.parse('client "{client_id}" exists with status "{status}"'))
-def given_client_exists(context, client_id, status, client_repository):
-    fake_client = Client.create_fake(client_id, status, "IDLE")
+def given_client_exists_with_status(context: dict, client_id: str, status: str, client_repository: ClientRepository) -> None:
+    fake_client = Client.create_fake_for_testing(client_id, status, "IDLE")
     asyncio.run(client_repository.save(fake_client))
 ```
 
