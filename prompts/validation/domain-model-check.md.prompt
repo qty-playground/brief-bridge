@@ -16,6 +16,7 @@ Use the Read tool to load:
 1. `docs/domain-model.md` - Reference design specifications
 2. Current implementation files in `brief_bridge/domain/`
 3. Current test implementations being validated
+4. `prompts/reference/python-coding-style.md.prompt` - For coding standards
 
 ## Validation Process
 
@@ -159,8 +160,12 @@ class Client:
 ```python
 # Domain model shows Client.is_available() method
 # Implementation check:
+from brief_bridge.domain.value_objects.client_status import ClientStatus
+from brief_bridge.domain.value_objects.client_availability import ClientAvailability
+
 class Client:
-    def is_available(self) -> bool:  # ✅ Method exists
+    def is_available_for_command(self) -> bool:  # ✅ Method exists with self-documenting name
+        """Business rule: command.target_validation - check if client can accept commands"""
         return (self._status == ClientStatus.ONLINE and  # ✅ Correct logic
                 self._availability == ClientAvailability.IDLE)
 ```
@@ -171,14 +176,21 @@ class Client:
 # Check implementation location:
 
 # ✅ Correct: Rule in domain entity
+from brief_bridge.domain.entities.command import Command
+from brief_bridge.domain.exceptions.client_busy_error import ClientBusyError
+from brief_bridge.domain.value_objects.client_availability import ClientAvailability
+
 class Client:
-    def assign_command(self, command):
+    def assign_command_to_client(self, command: Command) -> None:
+        """Business rule: client.concurrency - enforce one command per client"""
         if self.has_active_command():  # Business rule enforcement
             raise ClientBusyError("Client already executing command")
+        self._current_command = command
+        self._availability = ClientAvailability.BUSY
 
 # ❌ Wrong: Rule in application layer
 class SubmitCommandUseCase:
-    def execute(self, request):
+    def execute_submit_command_request(self, request):
         if some_external_check():  # Business rule in wrong layer
             raise Error("Client busy")
 ```

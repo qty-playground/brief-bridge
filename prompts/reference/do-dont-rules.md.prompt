@@ -3,6 +3,14 @@
 ## Overview
 Essential DO and DON'T rules for implementing Brief Bridge using BDD, Clean Architecture, and TDD methodology.
 
+## Required Reading
+**MUST read these files before proceeding:**
+
+Use the Read tool to load:
+1. `prompts/reference/python-coding-style.md.prompt` - For coding standards
+2. `docs/clean-architecture-structure.md` - For architecture design
+3. `docs/domain-model.md` - For business rules and entities
+
 ## TDD Development Rules
 
 ### ✅ DO: TDD Methodology
@@ -58,33 +66,68 @@ Scenario: Submit command to offline client
 ```python
 # ✅ Correct: Domain defines interfaces
 # brief_bridge/domain/repositories/client_repository.py
+from abc import ABC, abstractmethod
+from typing import Optional
+
+from brief_bridge.domain.entities.client import Client
+from brief_bridge.domain.value_objects.client_id import ClientId
+
 class ClientRepository(ABC):
     @abstractmethod
-    async def find_by_id(self, client_id: ClientId) -> Optional[Client]:
+    async def find_client_by_id_in_system(self, client_id: ClientId) -> Optional[Client]:
+        """Business rule: client.lookup - retrieve client by identifier"""
         pass
 
 # ✅ Correct: Infrastructure implements interfaces
 # brief_bridge/infrastructure/repositories/memory_client_repository.py  
+from typing import Optional, Dict
+
+from brief_bridge.domain.entities.client import Client
+from brief_bridge.domain.repositories.client_repository import ClientRepository
+from brief_bridge.domain.value_objects.client_id import ClientId
+
 class MemoryClientRepository(ClientRepository):
-    async def find_by_id(self, client_id: ClientId) -> Optional[Client]:
-        # Implementation
+    def __init__(self):
+        self._clients: Dict[str, Client] = {}
+        
+    async def find_client_by_id_in_system(self, client_id: ClientId) -> Optional[Client]:
+        """Business rule: client.lookup - find client in memory storage"""
+        return self._clients.get(client_id.value)
 ```
 
 **Keep business logic in domain layer:**
 ```python
 # ✅ Correct: Business rule in domain entity
+from brief_bridge.domain.entities.command import Command
+from brief_bridge.domain.exceptions.client_busy_error import ClientBusyError
+from brief_bridge.domain.value_objects.client_availability import ClientAvailability
+
 class Client:
-    def assign_command(self, command: Command):
+    def assign_command_to_client(self, command: Command) -> None:
+        """Business rule: client.concurrency - enforce one command per client"""
         if self.has_active_command():  # Business rule
             raise ClientBusyError("Client already executing command")
+        self._current_command = command
+        self._availability = ClientAvailability.BUSY
 ```
 
 **Use dependency injection:**
 ```python
 # ✅ Correct: Use case depends on interfaces
+from brief_bridge.application.dtos.submit_command_request import SubmitCommandRequest
+from brief_bridge.application.dtos.submit_command_response import SubmitCommandResponse
+from brief_bridge.domain.repositories.client_repository import ClientRepository
+from brief_bridge.domain.repositories.command_repository import CommandRepository
+
 class SubmitCommandUseCase:
-    def __init__(self, client_repo: ClientRepository):  # Interface, not implementation
+    def __init__(self, client_repo: ClientRepository, command_repo: CommandRepository):  # Interfaces, not implementations
         self._client_repo = client_repo
+        self._command_repo = command_repo
+    
+    async def execute_submit_command_request(self, request: SubmitCommandRequest) -> SubmitCommandResponse:
+        """Business rule: command.target_validation - orchestrate command submission"""
+        # Use case orchestrates domain logic without implementing business rules
+        pass
 ```
 
 ### ❌ DON'T: Architecture Violations

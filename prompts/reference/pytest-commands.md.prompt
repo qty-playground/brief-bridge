@@ -3,6 +3,14 @@
 ## Overview
 Essential pytest commands for Brief Bridge BDD development with pytest-bdd framework.
 
+## Required Reading
+**MUST read these files before proceeding:**
+
+Use the Read tool to load:
+1. `prompts/reference/python-coding-style.md.prompt` - For coding standards
+2. `docs/clean-architecture-structure.md` - For architecture design
+3. `prompts/reference/pytest-bdd-best-practices.md.prompt` - For BDD implementation patterns
+
 ## Core TDD Development Commands
 
 ### During TDD Development (Single Scenario)

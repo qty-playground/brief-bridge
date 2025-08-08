@@ -14,6 +14,7 @@ Use the Read tool to load:
 1. `tests/{specified_feature}/story.feature` - The feature file to implement
 2. `docs/user-stories/{specified_feature}.md` - For step definitions reference
 3. Current `pytest.ini` - To understand test configuration
+4. `prompts/reference/python-coding-style.md.prompt` - For coding standards
 
 ## Step-by-Step Process
 
@@ -28,45 +29,106 @@ After reading the feature file, identify all unique step patterns:
 Create this directory structure for `tests/{feature}/`:
 ```
 tests/{feature}/
-├── __init__.py                     # Empty file
-├── story.feature                   # Already exists
-└── test_{feature}.py              # Main test file with step definitions
+├── __init__.py                              # Empty file
+├── story.feature                            # Already exists
+├── test_{feature}.py                       # Step wrapper file (delegates to step modules)
+├── given_create_client_with_status.py      # One step per module
+├── given_setup_test_environment.py
+├── when_submit_api_request.py              # One step per module
+├── when_execute_command.py
+├── then_verify_response_status.py          # One step per module
+└── then_validate_response_body.py
 ```
 
-### Step 3: Implement Main Test Orchestrator
+### Step 3: Implement Step Wrapper File
 
-**File:** `tests/{feature}/test_{feature}.py`
+**File:** `tests/{feature}/test_{feature}.py` (Only contains step wrappers)
 ```python
-import pytest
 from pytest_bdd import scenarios, given, when, then, parsers
+from tests.{feature} import given_create_client_with_status
+from tests.{feature} import when_submit_api_request  
+from tests.{feature} import then_verify_response_status
 
 # Load all scenarios from feature file
 scenarios('story.feature')
 
-# Test context fixture
-@pytest.fixture
-def context():
-    return type('Context', (), {
-        'response': None,
-        'test_data': {},
-        'entities': []
-    })()
-
-# Step definitions with direct implementation
+# Step wrappers - delegate to individual step modules
 @given(parsers.parse('client "{client_id}" exists with status "{status}"'))
-def given_client_exists(context, client_id, status):
-    raise NotImplementedError("Step not implemented")
+def given_client_with_status_exists(context, client_id, status):
+    """Delegate to given_create_client_with_status step module"""
+    context.client_id = client_id
+    context.status = status
+    given_create_client_with_status.invoke(context)
 
 @when(parsers.parse('I POST to "{endpoint}" with:'))
-def when_post_to_endpoint(context, endpoint, docstring):
-    raise NotImplementedError("Step not implemented")
+def when_submit_request_to_api_endpoint(context, endpoint, docstring):
+    """Delegate to when_submit_api_request step module"""
+    context.endpoint = endpoint
+    context.request_body = docstring
+    when_submit_api_request.invoke(context)
 
 @then(parsers.parse('response status code should be {status_code:d}'))
-def then_response_status_code(context, status_code):
-    raise NotImplementedError("Step not implemented")
+def then_api_response_has_expected_status(context, status_code):
+    """Delegate to then_verify_response_status step module"""
+    context.expected_status_code = status_code
+    then_verify_response_status.invoke(context)
 ```
 
-### Step 4: Key Implementation Notes
+**Note:** The `context` fixture is now provided by root `conftest.py` with `TestContext` class.
+
+### Step 4: Implement Individual Step Modules
+
+Each step module contains exactly ONE `invoke` function following Command Pattern:
+
+**File:** `tests/{feature}/given_create_client_with_status.py`
+```python
+"""Given client exists with status - Screaming Architecture naming"""
+from conftest import TestContext
+from brief_bridge.domain.entities.client import Client
+from brief_bridge.domain.value_objects.client_id import ClientId
+from brief_bridge.domain.value_objects.client_status import ClientStatus
+
+def invoke(ctx: TestContext) -> None:
+    """
+    Business rule: client.registration - create test client with specific status
+    Command Pattern implementation for BDD step
+    """
+    client_id = ClientId(ctx.client_id)
+    # GREEN Stage 1: Hardcoded fake implementation
+    raise NotImplementedError("Client creation with status not implemented")
+```
+
+**File:** `tests/{feature}/when_submit_api_request.py`
+```python
+"""When I POST to endpoint - Screaming Architecture naming"""
+from conftest import TestContext
+from brief_bridge.infrastructure.fastapi.main import app
+import json
+
+def invoke(ctx: TestContext) -> None:
+    """
+    Execute API request through infrastructure layer
+    Command Pattern implementation for BDD step
+    """
+    # GREEN Stage 1: Hardcoded fake implementation
+    raise NotImplementedError("API request execution not implemented")
+```
+
+**File:** `tests/{feature}/then_verify_response_status.py`
+```python
+"""Then response status code verification - Screaming Architecture naming"""
+from conftest import TestContext
+
+def invoke(ctx: TestContext) -> None:
+    """
+    Verify API response follows expected contract
+    Command Pattern implementation for BDD step
+    """
+    # GREEN Stage 1: Hardcoded fake implementation
+    raise NotImplementedError("Response status verification not implemented")
+```
+
+### Step 5: Key Implementation Notes
 
 **Pytest-BDD Critical Requirements:**
 - Use `parsers.parse()` for parameter extraction
@@ -77,20 +139,27 @@ def then_response_status_code(context, status_code):
 
 **Step Definition Patterns:**
 ```python
-# Simple parameter extraction
+# Use absolute imports and domain-driven naming
+from brief_bridge.domain.entities.client import Client
+from brief_bridge.domain.value_objects.client_id import ClientId
+
+# Simple parameter extraction with business meaning
 @given(parsers.parse('client "{client_id}" exists'))
-def step_name(context, client_id):
-    raise NotImplementedError("Step not implemented")
+def given_client_exists_in_system(context, client_id):
+    """Business rule: client.registration - setup test client"""
+    raise NotImplementedError("Client entity creation not implemented")
 
-# Multiline string handling
+# Multiline string handling with clear business intent
 @when(parsers.parse('I POST to "{endpoint}" with:'))
-def step_name(context, endpoint, docstring):  # docstring = FIXED NAME
-    raise NotImplementedError("Step not implemented")
+def when_submit_api_request(context, endpoint, docstring):  # docstring = FIXED NAME
+    """Execute API request through infrastructure layer"""
+    raise NotImplementedError("API request execution not implemented")
 
-# Data table handling  
+# Data table handling with domain context
 @given('following clients exist:')
-def step_name(context, datatable):  # datatable = FIXED NAME
-    raise NotImplementedError("Step not implemented")
+def given_multiple_clients_exist_in_system(context, datatable):  # datatable = FIXED NAME
+    """Business rule: test.data_setup - create multiple test clients"""
+    raise NotImplementedError("Bulk client creation not implemented")
 ```
 
 ### Step 5: Validation
@@ -116,22 +185,45 @@ Expected output:
 ## Implementation Guidelines
 
 ### Module Naming (Screaming Architecture)
-Use descriptive module names that clearly indicate business intent:
-- `Given client exists` → file could be named `create_client_setup.py`
-- `When I POST to endpoint` → file could be named `execute_http_request.py`
-- `Then response status code` → file could be named `verify_response_status.py`
+Step module names should clearly describe business intent:
 
-**The key is: file names should clearly describe what they do**
+**Given Steps (Setup/Arrange):**
+- `given_create_client_with_status.py` - Creates client with specific status
+- `given_setup_test_environment.py` - Initializes test environment
+- `given_register_multiple_clients.py` - Bulk client registration
+
+**When Steps (Action/Act):**
+- `when_submit_api_request.py` - Executes API endpoint calls
+- `when_execute_command.py` - Runs business commands
+- `when_send_heartbeat.py` - Sends client heartbeat
+
+**Then Steps (Verification/Assert):**
+- `then_verify_response_status.py` - Checks HTTP status codes
+- `then_validate_response_body.py` - Validates response content
+- `then_confirm_client_state.py` - Verifies client status
+
+### Command Pattern Implementation
+Each step module:
+- Contains exactly ONE `invoke(ctx)` function
+- Follows Command Pattern semantics
+- Has business-descriptive docstring
+- Uses absolute imports only
+- Implements single responsibility
 
 ## Completion Checklist
-- [ ] Feature directory created with correct structure
-- [ ] Main test file (`test_{feature}.py`) created with step definitions
-- [ ] Context fixture created for test data sharing
-- [ ] All step definitions use `parsers.parse()` for parameter extraction
-- [ ] Step definitions handle `docstring` and `datatable` parameters correctly
+- [ ] Feature directory created with step module structure
+- [ ] Step wrapper file (`test_{feature}.py`) created with delegation only
+- [ ] Root `conftest.py` contains `TestContext` class and `context` fixture
+- [ ] Individual step modules created with given_, when_, then_ prefixes
+- [ ] Each step module has exactly ONE `invoke(ctx: TestContext) -> None` function
+- [ ] All step modules import `TestContext` from conftest
+- [ ] All step modules use Screaming Architecture naming
+- [ ] Step wrapper uses `parsers.parse()` for parameter extraction
+- [ ] Step wrappers handle `docstring` and `datatable` parameters correctly
+- [ ] All step modules use absolute imports
 - [ ] pytest can discover scenarios (but skips them due to @skip markers)
-- [ ] No import errors from test file
-- [ ] All step definitions raise NotImplementedError
+- [ ] No import errors from any test files
+- [ ] All `invoke` functions raise NotImplementedError
 
 ## Verification Commands
 ```bash
@@ -162,10 +254,11 @@ When you complete any major step in this phase (Step 1-6), you MUST:
 **What we plan to do:** [Describe next concrete action, e.g., "Begin TDD cycle with first scenario activation and RED phase"]
 
 **Files created/modified:** 
-- tests/{feature}/test_{feature}.py
-- tests/{feature}/given_steps.py
-- tests/{feature}/when_steps.py 
-- tests/{feature}/then_steps.py
+- tests/{feature}/test_{feature}.py                    # Step wrapper (delegates only)
+- tests/{feature}/given_create_client_with_status.py
+- tests/{feature}/when_submit_api_request.py
+- tests/{feature}/then_verify_response_status.py
+- [... other step modules as needed]
 
 **Validation status:** [✅ Passed / ❌ Failed / ⏳ Pending]
 ```

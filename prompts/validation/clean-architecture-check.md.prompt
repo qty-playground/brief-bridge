@@ -16,6 +16,7 @@ Use the Read tool to load:
 1. `docs/clean-architecture-structure.md` - Architecture design reference
 2. Current implementation in `brief_bridge/` directory
 3. Test implementations in `tests/` directory
+4. `prompts/reference/python-coding-style.md.prompt` - For coding standards
 
 ## Validation Process
 
@@ -79,25 +80,43 @@ find brief_bridge/application -name "*.py" -exec grep -l "from brief_bridge\.inf
 ```python
 # brief_bridge/domain/repositories/client_repository.py
 from abc import ABC, abstractmethod
+from typing import Optional
+
+from brief_bridge.domain.entities.client import Client
+from brief_bridge.domain.value_objects.client_id import ClientId
 
 class ClientRepository(ABC):
     @abstractmethod
-    async def save(self, client: Client) -> None:
+    async def save_client_to_system(self, client: Client) -> None:
+        """Business rule: client.registration - persist client data"""
         pass
     
     @abstractmethod 
-    async def find_by_id(self, client_id: ClientId) -> Optional[Client]:
+    async def find_client_by_id_in_system(self, client_id: ClientId) -> Optional[Client]:
+        """Business rule: client.lookup - retrieve client by identifier"""
         pass
 ```
 
 **Infrastructure implements interfaces:**
 ```python
 # brief_bridge/infrastructure/repositories/memory_client_repository.py
+from typing import Optional, Dict
+
+from brief_bridge.domain.entities.client import Client
 from brief_bridge.domain.repositories.client_repository import ClientRepository
+from brief_bridge.domain.value_objects.client_id import ClientId
 
 class MemoryClientRepository(ClientRepository):
-    async def save(self, client: Client) -> None:
-        # Implementation
+    def __init__(self):
+        self._clients: Dict[str, Client] = {}
+    
+    async def save_client_to_system(self, client: Client) -> None:
+        """Business rule: client.registration - store client in memory"""
+        self._clients[client.client_id.value] = client
+    
+    async def find_client_by_id_in_system(self, client_id: ClientId) -> Optional[Client]:
+        """Business rule: client.lookup - find client by ID"""
+        return self._clients.get(client_id.value)
 ```
 
 **Validation Checklist:**
@@ -113,16 +132,30 @@ class MemoryClientRepository(ClientRepository):
 **Correct Use Case Pattern:**
 ```python
 # brief_bridge/application/use_cases/submit_command_use_case.py
+from brief_bridge.application.dtos.submit_command_request import SubmitCommandRequest
+from brief_bridge.application.dtos.submit_command_response import SubmitCommandResponse
+from brief_bridge.domain.entities.client import Client
+from brief_bridge.domain.entities.command import Command
+from brief_bridge.domain.repositories.client_repository import ClientRepository
+from brief_bridge.domain.repositories.command_repository import CommandRepository
+from brief_bridge.domain.value_objects.client_id import ClientId
+from brief_bridge.domain.value_objects.command_content import CommandContent
+
 class SubmitCommandUseCase:
     def __init__(self, client_repo: ClientRepository, command_repo: CommandRepository):
         self._client_repo = client_repo  # Domain interface
         self._command_repo = command_repo  # Domain interface
     
-    async def execute(self, request: SubmitCommandRequest) -> SubmitCommandResponse:
+    async def execute_submit_command_request(self, request: SubmitCommandRequest) -> SubmitCommandResponse:
+        """Business rule: command.target_validation - submit command to available client"""
         # Orchestrates domain entities and services
-        client = await self._client_repo.find_by_id(ClientId(request.client_id))
-        command = Command.create(...)  # Domain entity
-        await self._command_repo.save(command)
+        client = await self._client_repo.find_client_by_id_in_system(ClientId(request.client_id))
+        if not client or not client.is_available_for_command():
+            raise ClientNotAvailableError("Client cannot accept commands")
+        
+        command = Command.create_for_client(CommandContent(request.content), client.client_id)
+        client.assign_command_to_client(command)
+        await self._command_repo.save_command_to_system(command)
         return SubmitCommandResponse.from_command(command)
 ```
 

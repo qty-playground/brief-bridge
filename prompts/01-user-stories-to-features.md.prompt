@@ -10,6 +10,7 @@ Use the Read tool to load:
 1. `docs/user-stories/{specified_feature_name}.md` - The target user story
 2. `docs/domain-model.md` - For business rules and entity relationships  
 3. `docs/clean-architecture-structure.md` - For understanding code organization
+4. `prompts/reference/python-coding-style.md.prompt` - For coding standards and naming conventions
 
 ## Step-by-Step Process
 

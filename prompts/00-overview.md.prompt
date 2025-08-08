@@ -46,6 +46,7 @@ These documents contain the design specifications:
 - `docs/clean-architecture-structure.md`: Code organization and dependencies  
 - `docs/user-stories/`: Detailed technical specifications per feature
 - `docs/prd.md`: Business requirements and context
+- `prompts/reference/python-coding-style.md.prompt`: Python coding standards for Clean Architecture
 
 ## Usage Instructions
 

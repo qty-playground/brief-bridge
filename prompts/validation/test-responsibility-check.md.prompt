@@ -17,6 +17,7 @@ Use the Read tool to load:
 2. Step implementations: `tests/{feature}/{given,when,then}_steps.py`
 3. Domain model: `docs/domain-model.md` - For business rule reference
 4. User story: `docs/user-stories/{feature}.md` - For expected behavior
+5. `prompts/reference/python-coding-style.md.prompt` - For coding standards
 
 ## Test Responsibility Framework
 
@@ -61,18 +62,25 @@ Feature: Submit Command
 **Given Steps - Test Data Setup:**
 ```python
 @given('client "{client_id}" exists with status "{status}" and availability "{availability}"')
-def given_client_exists_with_status_and_availability(client_id, status, availability):
+def given_client_exists_with_status_and_availability_in_system(client_id: str, status: str, availability: str, client_repository: ClientRepository) -> None:
     """
+    Business rule: client.registration - setup test client with specific status
     ✅ RESPONSIBLE FOR: Setting up test preconditions
     ❌ NOT RESPONSIBLE FOR: Business logic implementation
     """
-    # ✅ Correct: Delegates to domain layer
+    # ✅ Correct: Delegates to domain layer with absolute imports
+    from brief_bridge.domain.entities.client import Client
+    from brief_bridge.domain.value_objects.client_id import ClientId
+    from brief_bridge.domain.value_objects.client_info import ClientInfo
+    from brief_bridge.domain.value_objects.client_status import ClientStatus
+    import asyncio
+    
     client_info = ClientInfo.create_default_linux()
     client = Client(ClientId(client_id), client_info)
-    client.set_status(ClientStatus(status))
+    client.set_client_status_in_system(ClientStatus(status))
     
     # Uses repository interface (not implementation details)
-    asyncio.run(client_repository.save(client))
+    asyncio.run(client_repository.save_client_to_system(client))
 ```
 
 **When Steps - Action Execution:**

@@ -15,6 +15,7 @@ Use the Read tool to load:
 1. `tests/{current_feature}/story.feature` - Check remaining @skip scenarios
 2. `docs/user-stories/` directory listing - To see available features
 3. Current feature's business rules from `docs/domain-model.md`
+4. `prompts/reference/python-coding-style.md.prompt` - For coding standards
 
 ## Decision Tree: What's Next?
 

@@ -3,6 +3,14 @@
 ## Overview
 This document provides pytest-bdd implementation patterns and best practices based on proven examples.
 
+## Required Reading
+**MUST read these files before proceeding:**
+
+Use the Read tool to load:
+1. `prompts/reference/python-coding-style.md.prompt` - For coding standards
+2. `docs/clean-architecture-structure.md` - For architecture design
+3. `docs/domain-model.md` - For business rules and entities
+
 ## Step Definition Syntax
 
 ### Basic Step Definitions
@@ -38,9 +46,10 @@ def given_client_is_online(context):
 #### 2. Parameter Extraction
 ```python
 @given(parsers.parse('client "{client_id}" is online'))
-def given_client_online(context, client_id):
-    context.client_id = client_id
-    context.client_status = 'ONLINE'
+def given_client_is_online_in_system(context: dict, client_id: str) -> None:
+    """Business rule: client.registration - set up online client for testing"""
+    context['client_id'] = client_id
+    context['client_status'] = 'ONLINE'
 ```
 
 #### 3. Type Conversion
@@ -59,11 +68,23 @@ def then_status_code(context, status_code):
 #   """
 
 @given(parsers.parse('client exists with data:'))
-def given_client_with_data(context, docstring):
-    """IMPORTANT: 'docstring' is a FIXED parameter name - cannot be changed"""
+def given_client_exists_with_data_in_system(context: dict, docstring: str) -> None:
+    """Business rule: client.registration - create client from provided data
+    
+    IMPORTANT: 'docstring' is a FIXED parameter name - cannot be changed
+    """
     import json
+    from brief_bridge.domain.entities.client import Client
+    from brief_bridge.domain.value_objects.client_id import ClientId
+    from brief_bridge.domain.value_objects.client_info import ClientInfo
+    
     client_data = json.loads(docstring)
-    context.client_data = client_data
+    client = Client(
+        ClientId(client_data['client_id']),
+        ClientInfo.from_dict(client_data)
+    )
+    context['client_data'] = client_data
+    context['client_entity'] = client
 ```
 
 **CRITICAL: Docstring Parameter Name Rules**
@@ -112,18 +133,30 @@ def api_context(test_client):
     })()
 
 @when(parsers.parse('I POST to "{endpoint}" with:'))
-def when_post_to_endpoint(api_context, endpoint, docstring):
+def when_i_post_to_endpoint_with_payload(api_context: dict, endpoint: str, docstring: str) -> None:
     """Execute HTTP POST with JSON payload from docstring
-    IMPORTANT: 'docstring' parameter name is FIXED - cannot be renamed"""
+    
+    Business rule: api.interaction - trigger system action through HTTP interface
+    IMPORTANT: 'docstring' parameter name is FIXED - cannot be renamed
+    """
     import json
+    from fastapi.testclient import TestClient
+    
     payload = json.loads(docstring)
-    response = api_context.client.post(endpoint, json=payload)
-    api_context.last_response = response
+    test_client: TestClient = api_context['client']
+    response = test_client.post(endpoint, json=payload)
+    api_context['last_response'] = response
 
 @then(parsers.parse('response status code should be {status_code:d}'))
-def then_response_status(api_context, status_code):
-    """Verify HTTP response status code"""
-    assert api_context.last_response.status_code == status_code
+def then_response_status_code_should_be(api_context: dict, status_code: int) -> None:
+    """Verify HTTP response status code matches expectation
+    
+    Validates external system behavior through HTTP interface
+    """
+    from requests import Response
+    
+    response: Response = api_context['last_response']
+    assert response.status_code == status_code, f"Expected status {status_code}, got {response.status_code}"
 
 @then(parsers.parse('response body should contain:'))
 def then_response_body_contains(api_context, docstring):
