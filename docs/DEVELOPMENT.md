@@ -2,7 +2,7 @@
 
 ## Overview
 
-Brief Bridge is a lightweight tool that enables AI coding assistants to execute commands on remote clients through HTTP polling. This guide covers the complete development approach using BDD (Behavior-Driven Development), Clean Architecture, and Test-Driven Development.
+Brief Bridge is a lightweight tool that enables AI coding assistants to execute commands on remote clients through HTTP polling. This guide covers the complete development approach using BDD (Behavior-Driven Development), simplified architecture (Framework ↔ UseCase ↔ Entity/Repository), and Test-Driven Development.
 
 ## Project Structure
 
@@ -10,30 +10,23 @@ Brief Bridge is a lightweight tool that enables AI coding assistants to execute 
 brief-bridge/
 ├── README.md                           # Project overview and quick start
 ├── setup.py                           # Python package configuration
-├── brief_bridge/                       # Main application (Clean Architecture)
-│   ├── domain/                         # Business logic layer
-│   │   ├── entities/                   # Business entities (Client, Command, etc.)
-│   │   ├── value_objects/              # Immutable value types
-│   │   ├── repositories/               # Repository interfaces
-│   │   └── services/                   # Domain services
-│   ├── application/                    # Use cases and orchestration
-│   │   └── use_cases/                  # Application use cases
-│   └── infrastructure/                 # External concerns
-│       ├── repositories/               # Repository implementations
-│       ├── web/                        # FastAPI web layer
-│       └── config/                     # Configuration
+├── brief_bridge/                       # Main application (Simplified Architecture)
+│   ├── entities/                       # Business entities (Client, Command, etc.)
+│   ├── use_cases/                      # Use cases with dependency injection
+│   ├── repositories/                   # Repository concrete implementations
+│   └── web/                            # FastAPI web layer
 ├── tests/                              # BDD tests using pytest-bdd
 │   ├── {feature_name}/                 # Per-feature test directories
 │   │   ├── story.feature              # Gherkin feature file
-│   │   ├── test_{feature_name}.py     # Main test orchestrator
-│   │   ├── given_steps.py             # Given step implementations
-│   │   ├── when_steps.py              # When step implementations
-│   │   └── then_steps.py              # Then step implementations
-│   └── conftest.py                     # pytest configuration
+│   │   ├── test_{feature_name}.py     # Step wrapper file
+│   │   ├── given_*.py                 # Given step modules (Command Pattern)
+│   │   ├── when_*.py                  # When step modules (Command Pattern)
+│   │   └── then_*.py                  # Then step modules (Command Pattern)
+│   └── conftest.py                     # pytest configuration + TestContext
 ├── docs/                               # Design documentation
 │   ├── DEVELOPMENT.md                  # This file
 │   ├── domain-model.md                 # Domain model with UML
-│   ├── clean-architecture-structure.md # Architecture design
+│   ├── clean-architecture-structure.md # Simplified architecture design
 │   ├── prd.md                          # Product requirements
 │   └── user-stories/                   # Technical user stories
 │       ├── submit_command_use_case.md
@@ -41,7 +34,7 @@ brief-bridge/
 │       └── ...
 └── prompts/                            # AI assistant implementation prompts
     ├── README.md                       # Prompt usage guide
-    ├── 00-overview.md.prompt           # Development methodology
+    ├── 00-overview.md.prompt           # Simplified architecture methodology
     ├── 01-user-stories-to-features.md.prompt
     ├── 02-walking-skeleton.md.prompt
     ├── 03-tdd-red-green-refactor.md.prompt
@@ -62,10 +55,10 @@ brief-bridge/
 - **Outside-in**: Start with user requirements, work inward to implementation
 - **Specification by example**: Concrete scenarios define system behavior
 
-### Clean Architecture
-- **Dependency inversion**: Dependencies point inward toward business logic
-- **Layer separation**: Clear boundaries between domain, application, and infrastructure
-- **Business logic isolation**: Core business rules independent of external concerns
+### Simplified Architecture
+- **Framework ↔ UseCase ↔ Entity/Repository**: Simple three-layer approach
+- **Dependency injection**: External dependencies injected into UseCases
+- **Testability focus**: Architecture serves testing, not theoretical purity
 
 ### Test-Driven Development
 - **Red-Green-Refactor**: Systematic development cycle
@@ -79,12 +72,12 @@ brief-bridge/
 - **Command**: Task submitted for execution on a client
 - **ExecutionResult**: Output from command execution
 
-### Value Objects
-- **ClientId**: Unique client identifier
-- **CommandId**: Unique command identifier  
-- **ClientInfo**: System information (OS, architecture, version)
-- **ClientStatus**: Online/Offline status enumeration
-- **ClientAvailability**: Idle/Busy availability enumeration
+### Simple Data Structures
+- **Client ID**: String identifier for clients
+- **Command ID**: String identifier for commands  
+- **Client Info**: Dict with system information (OS, architecture, version)
+- **Status**: String values ("ONLINE"/"OFFLINE")
+- **Availability**: String values ("IDLE"/"BUSY")
 
 ### Business Rules
 - **client.registration**: Clients register with system information
