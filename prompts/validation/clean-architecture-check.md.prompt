@@ -1,7 +1,7 @@
-# Clean Architecture Conformance Validation
+# Simplified Architecture Conformance Validation
 
 ## Objective
-Validate that implementation maintains Clean Architecture principles with proper dependency direction and layer boundaries.
+Validate that the implementation follows our simplified architecture (Framework ↔ UseCase ↔ Entity/Repository) with proper dependency injection and testability.
 
 ## When to Use
 - After completing each scenario
@@ -13,343 +13,280 @@ Validate that implementation maintains Clean Architecture principles with proper
 **MUST read these files before validation:**
 
 Use the Read tool to load:
-1. `docs/clean-architecture-structure.md` - Architecture design reference
+1. `docs/clean-architecture-structure.md` - Architecture design reference (adapted for simplified approach)
 2. Current implementation in `brief_bridge/` directory
 3. Test implementations in `tests/` directory
-4. `prompts/reference/python-coding-style.md.prompt` - For coding standards
+4. `prompts/reference/python-coding-style.md.prompt` - Simplified architecture coding standards
 
 ## Validation Process
 
-### Step 1: Layer Structure Verification
+### Step 1: Simplified Structure Verification
 
-**Check directory structure matches design:**
+**Check directory structure matches simplified design:**
 ```
 brief_bridge/
-├── domain/                    # Core business logic
-│   ├── entities/              # Business entities
-│   ├── value_objects/         # Immutable value types
-│   ├── repositories/          # Repository interfaces
-│   └── services/              # Domain services
-├── application/               # Use cases and orchestration
-│   └── use_cases/             # Application use cases
-└── infrastructure/            # External concerns
-    ├── repositories/          # Repository implementations
-    ├── web/                   # FastAPI web layer
-    └── config/                # Configuration
+├── entities/                  # Business entities with domain logic
+├── use_cases/                # Business use cases with dependency injection
+├── repositories/             # Data persistence (concrete implementations)
+└── web/                      # Framework layer (FastAPI controllers)
 ```
 
 **Validation Checklist:**
-- [ ] All required directories exist
-- [ ] No unexpected directories in layer structure
-- [ ] Files placed in appropriate layers
+- [ ] Core directories exist: entities/, use_cases/, repositories/, web/
+- [ ] No over-engineered subdirectories (avoid domain/application/infrastructure split)
+- [ ] Files placed appropriately for simplified architecture
 
-### Step 2: Dependency Direction Analysis
+### Step 2: Dependency Injection Analysis
 
-**The Dependency Rule: Source code dependencies must point inward**
+**Core Rule: UseCases receive external dependencies via constructor injection**
 
-**Check import statements in each layer:**
+**Check dependency injection patterns:**
 
-**Domain Layer (brief_bridge/domain/) - NO OUTWARD DEPENDENCIES:**
+**UseCases (brief_bridge/use_cases/) - DEPENDENCY INJECTION:**
 ```bash
-# Should find NO imports from application or infrastructure
-find brief_bridge/domain -name "*.py" -exec grep -l "from brief_bridge\.\(application\|infrastructure\)" {} \;
+# Check UseCases have injected dependencies
+grep -r "def __init__" brief_bridge/use_cases/ | grep -v "self):"
 ```
-- [ ] Domain has zero imports from application layer
-- [ ] Domain has zero imports from infrastructure layer
-- [ ] Domain only imports from: standard library, external libraries, other domain modules
+- [ ] UseCases receive repositories/services in `__init__`
+- [ ] UseCases don't directly instantiate external dependencies
+- [ ] UseCases work with simple data structures (dict, simple classes)
 
-**Application Layer (brief_bridge/application/) - DOMAIN ONLY:**
+**Entities (brief_bridge/entities/) - MINIMAL DEPENDENCIES:**
 ```bash
-# Should find NO imports from infrastructure
-find brief_bridge/application -name "*.py" -exec grep -l "from brief_bridge\.infrastructure" {} \;
+# Should find minimal external imports
+grep -r "from brief_bridge" brief_bridge/entities/
 ```
-- [ ] Application imports from domain layer ✅
-- [ ] Application has zero imports from infrastructure layer
-- [ ] Application can import: domain, standard library, external libraries
+- [ ] Entities contain business logic methods
+- [ ] Entities avoid importing repositories or UseCases
+- [ ] Entities use simple data types for attributes
 
-**Infrastructure Layer (brief_bridge/infrastructure/) - CAN IMPORT ALL:**
-- [ ] Infrastructure imports from domain layer ✅
-- [ ] Infrastructure imports from application layer ✅
-- [ ] Infrastructure can import any layer (dependency direction preserved)
+**Repositories (brief_bridge/repositories/) - CONCRETE IMPLEMENTATIONS:**
+- [ ] Repositories are concrete classes (not necessarily abstracted)
+- [ ] Repository methods have clear business meaning
+- [ ] Repositories can be easily mocked for testing
 
-### Step 3: Interface-Implementation Validation
+### Step 3: Testability Validation
 
-**Repository Pattern Check:**
+**Testing Pattern Check:**
 
-**Domain defines interfaces:**
+**UseCases should be easily testable:**
 ```python
-# brief_bridge/domain/repositories/client_repository.py
-from abc import ABC, abstractmethod
-from typing import Optional
-
-from brief_bridge.domain.entities.client import Client
-from brief_bridge.domain.value_objects.client_id import ClientId
-
-class ClientRepository(ABC):
-    @abstractmethod
-    async def save_client_to_system(self, client: Client) -> None:
-        """Business rule: client.registration - persist client data"""
-        pass
-    
-    @abstractmethod 
-    async def find_client_by_id_in_system(self, client_id: ClientId) -> Optional[Client]:
-        """Business rule: client.lookup - retrieve client by identifier"""
-        pass
-```
-
-**Infrastructure implements interfaces:**
-```python
-# brief_bridge/infrastructure/repositories/memory_client_repository.py
-from typing import Optional, Dict
-
-from brief_bridge.domain.entities.client import Client
-from brief_bridge.domain.repositories.client_repository import ClientRepository
-from brief_bridge.domain.value_objects.client_id import ClientId
-
-class MemoryClientRepository(ClientRepository):
-    def __init__(self):
-        self._clients: Dict[str, Client] = {}
-    
-    async def save_client_to_system(self, client: Client) -> None:
-        """Business rule: client.registration - store client in memory"""
-        self._clients[client.client_id.value] = client
-    
-    async def find_client_by_id_in_system(self, client_id: ClientId) -> Optional[Client]:
-        """Business rule: client.lookup - find client by ID"""
-        return self._clients.get(client_id.value)
-```
-
-**Validation Checklist:**
-- [ ] All repository interfaces defined in domain layer
-- [ ] All repository implementations in infrastructure layer  
-- [ ] Implementations inherit from domain interfaces
-- [ ] No domain layer imports infrastructure implementations
-
-### Step 4: Use Case Boundary Validation
-
-**Use cases orchestrate domain logic:**
-
-**Correct Use Case Pattern:**
-```python
-# brief_bridge/application/use_cases/submit_command_use_case.py
-from brief_bridge.application.dtos.submit_command_request import SubmitCommandRequest
-from brief_bridge.application.dtos.submit_command_response import SubmitCommandResponse
-from brief_bridge.domain.entities.client import Client
-from brief_bridge.domain.entities.command import Command
-from brief_bridge.domain.repositories.client_repository import ClientRepository
-from brief_bridge.domain.repositories.command_repository import CommandRepository
-from brief_bridge.domain.value_objects.client_id import ClientId
-from brief_bridge.domain.value_objects.command_content import CommandContent
-
+# brief_bridge/use_cases/submit_command_use_case.py
 class SubmitCommandUseCase:
     def __init__(self, client_repo: ClientRepository, command_repo: CommandRepository):
-        self._client_repo = client_repo  # Domain interface
-        self._command_repo = command_repo  # Domain interface
-    
-    async def execute_submit_command_request(self, request: SubmitCommandRequest) -> SubmitCommandResponse:
-        """Business rule: command.target_validation - submit command to available client"""
-        # Orchestrates domain entities and services
-        client = await self._client_repo.find_client_by_id_in_system(ClientId(request.client_id))
-        if not client or not client.is_available_for_command():
-            raise ClientNotAvailableError("Client cannot accept commands")
+        self._client_repo = client_repo  # Injected for testability
+        self._command_repo = command_repo  # Injected for testability
         
-        command = Command.create_for_client(CommandContent(request.content), client.client_id)
-        client.assign_command_to_client(command)
-        await self._command_repo.save_command_to_system(command)
-        return SubmitCommandResponse.from_command(command)
+    async def execute(self, request: dict) -> dict:
+        client = await self._client_repo.find(request["client_id"])
+        if not client.can_accept_new_command():  # Business logic in entity
+            raise ClientNotAvailableError()
+        # ... rest of logic
 ```
 
-**Validation Checklist:**
-- [ ] Use cases only depend on domain interfaces (not implementations)
-- [ ] Use cases orchestrate domain entities and services
-- [ ] Use cases contain minimal business logic (orchestration only)
-- [ ] Business rules implemented in domain entities/services
-
-### Step 5: Test Layer Architecture
-
-**Test dependencies should follow same rules:**
-
-**Domain Tests:**
+**Simple concrete repositories:**
 ```python
-# tests/unit/domain/ - Pure domain testing
-from brief_bridge.domain.entities.client import Client
-# No application or infrastructure imports
+# brief_bridge/repositories/client_repository.py
+class ClientRepository:
+    def __init__(self):
+        self._clients = {}  # Simple storage
+        
+    async def save(self, client: Client) -> None:
+        self._clients[client.client_id] = client
+        
+    async def find(self, client_id: str) -> Client:
+        return self._clients.get(client_id)
 ```
 
-**Application Tests:**
-```python  
-# tests/unit/application/ - Use case testing
-from brief_bridge.application.use_cases.submit_command_use_case import SubmitCommandUseCase
-from brief_bridge.domain.repositories.client_repository import ClientRepository  # Interface only
-```
-
-**Integration Tests:**
+**Framework layer converts data:**
 ```python
-# tests/integration/ - End-to-end testing
-# Can import from all layers (testing real implementations)
+# brief_bridge/web/routers/commands.py  
+@router.post("/commands")
+async def submit_command(request: CommandRequest, use_case: SubmitCommandUseCase = Depends()):
+    # Convert framework DTO to simple dict
+    result = await use_case.execute({
+        "client_id": request.client_id,
+        "content": request.content
+    })
+    return result  # UseCase returns simple dict
 ```
 
-**Validation Checklist:**
-- [ ] Unit tests respect layer boundaries
-- [ ] Domain tests import only domain layer
-- [ ] Application tests use domain interfaces (not implementations)
-- [ ] Integration tests can use all layers
+## Core Simplified Architecture Rules
 
-### Step 6: Business Logic Location Check
+### Rule 1: Framework ↔ UseCase ↔ Entity/Repository Flow
 
-**Business rules must reside in domain layer:**
+**Check the data flow:**
+- [ ] **Framework/Controllers** convert HTTP requests to simple data structures
+- [ ] **UseCases** receive simple data (dict/simple classes) and return simple data
+- [ ] **Entities** contain business logic and rules
+- [ ] **Repositories** handle data persistence with clear methods
 
-**Correct Business Logic Placement:**
+### Rule 2: Dependency Injection for Testability
+
+**Check testability patterns:**
+- [ ] **UseCases** receive all external dependencies via constructor
+- [ ] **No direct instantiation** of repositories/services inside UseCases
+- [ ] **Tests can easily mock** injected dependencies
+- [ ] **Two testing levels**: E2E (via framework) and Unit (via UseCase)
+
+**Example Test Validation:**
 ```python
-# ✅ Correct: Business rule in domain entity
-class Client:
-    def assign_command(self, command: Command):
-        if self.has_active_command():  # Business rule
-            raise ClientBusyError("Client already executing command")
-        self._current_command = command
+# ✅ Good: UseCase is easily testable
+def test_submit_command_use_case():
+    # Mock injected dependencies
+    client_repo = Mock()
+    command_repo = Mock()
+    use_case = SubmitCommandUseCase(client_repo, command_repo)
+    
+    # Simple data structures
+    result = await use_case.execute({"client_id": "test", "content": "ls"})
+    assert result["status"] == "success"
 
-# ✅ Correct: Business rule in domain service  
-class CommandDistributionService:
-    def can_accept_command(self, client: Client) -> bool:
-        return client.is_online() and client.is_available()  # Business rule
-```
-
-**Incorrect Business Logic Placement:**
-```python
-# ❌ Wrong: Business rule in use case
-class SubmitCommandUseCase:
-    async def execute(self, request):
-        if client.status == "OFFLINE":  # Business rule in wrong layer
-            raise ValueError("Client offline")
-
-# ❌ Wrong: Business rule in infrastructure  
-class WebController:
-    def submit_command(self, request):
-        if not self.validate_client_status(request.client_id):  # Business rule
-            return {"error": "Invalid client"}
-```
-
-**Validation Checklist:**
-- [ ] Client management rules in Client entity
-- [ ] Command validation rules in Command entity  
-- [ ] Distribution logic in domain services
-- [ ] No business rules in application/infrastructure layers
-
-## Architecture Violation Detection
-
-### Common Violations and Fixes
-
-**1. Domain importing outer layers:**
-```python
-# ❌ Violation
-from brief_bridge.infrastructure.repositories.memory_client_repository import MemoryClientRepository
-
-# ✅ Fix: Use dependency injection
-from brief_bridge.domain.repositories.client_repository import ClientRepository
-```
-
-**2. Business logic in use cases:**
-```python
-# ❌ Violation  
-class SubmitCommandUseCase:
+# ❌ Bad: Hard to test due to internal dependencies
+class HardToTestUseCase:
     def execute(self, request):
-        if client.status != "ONLINE":  # Business rule
-            raise Error("Client not available")
+        repo = ClientRepository()  # Hard to mock!
+        client = repo.find(request["client_id"])
+```
 
-# ✅ Fix: Move to domain
+### Rule 3: Business Logic Location
+
+**Check business rule placement:**
+- [ ] **Business rules** implemented in Entity methods
+- [ ] **UseCases** orchestrate but don't contain business logic
+- [ ] **Controllers** only handle data conversion
+- [ ] **Repositories** only handle data persistence
+
+**Example Validation:**
+```python
+# ✅ Good: Business logic in entity
+class Client:
+    def can_accept_new_command(self) -> bool:
+        """Business rule: client availability check"""
+        return self.status == "ONLINE" and self.availability == "IDLE"
+
+# ✅ Good: UseCase orchestrates
+class SubmitCommandUseCase:
+    async def execute(self, request: dict) -> dict:
+        client = await self._client_repo.find(request["client_id"])
+        if not client.can_accept_new_command():  # Uses entity business logic
+            raise ClientNotAvailableError()
+
+# ❌ Bad: Business logic in UseCase
+class BadUseCase:
+    async def execute(self, request: dict) -> dict:
+        client = await self._client_repo.find(request["client_id"])
+        # Business logic in wrong place!
+        if client.status != "ONLINE" or client.availability != "IDLE":
+            raise ClientNotAvailableError()
+```
+
+## Validation Commands
+
+### Check Architecture Simplicity
+```bash
+# Look for over-engineering signs
+find brief_bridge -name "*Interface.py" -o -name "*Factory.py" -o -name "*Abstract*.py"
+
+# Should be minimal - only create abstractions when you have multiple implementations
+```
+
+### Check Dependency Injection
+```bash
+# UseCases should have dependencies in constructor
+grep -r "def __init__" brief_bridge/use_cases/ | grep -v "self):"
+
+# UseCases should not instantiate repositories directly
+grep -r "Repository()" brief_bridge/use_cases/
+```
+
+### Check Business Logic Location
+```bash
+# Entities should have business methods
+grep -r "def " brief_bridge/entities/ | grep -v "__init__"
+
+# UseCases should delegate to entities for business logic
+grep -r "if.*status\|if.*availability" brief_bridge/use_cases/
+```
+
+## Anti-Patterns to Avoid
+
+### ❌ Over-Engineering
+```python
+# Don't create unnecessary abstractions
+class AbstractRepositoryFactory(ABC): pass
+class ClientRepositoryInterface(ABC): pass  # Unless you have multiple implementations
+
+# Don't over-granularize value objects
+@dataclass class ClientId: pass  # Just use string
+@dataclass class CommandContent: pass  # Just use string
+```
+
+### ❌ Complex Data Structures
+```python
+# Don't over-complicate data inside UseCases
+class ComplexRequest:
+    def __init__(self):
+        self.metadata = RequestMetadata()  # Too complex
+        self.validation_rules = ValidationRules()  # Too complex
+
+# Use simple structures instead
+request = {"client_id": "123", "content": "ls -la"}  # Simple and clear
+```
+
+### ❌ Business Logic in Wrong Places
+```python
+# Don't put business logic in UseCases
+class BadUseCase:
+    def execute(self, request):
+        # Business rule implemented here (wrong!)
+        if client.status != "ONLINE" or client.availability != "IDLE":
+            raise Error()
+
+# Put business logic in entities
 class Client:
     def can_accept_command(self) -> bool:
-        return self.is_online() and self.is_available()
-```
-
-**3. Use cases depending on implementations:**
-```python
-# ❌ Violation
-from brief_bridge.infrastructure.repositories.memory_client_repository import MemoryClientRepository
-
-# ✅ Fix: Depend on interfaces
-from brief_bridge.domain.repositories.client_repository import ClientRepository
-```
-
-## Automated Architecture Validation
-
-### Shell Commands
-
-**Check for dependency violations:**
-```bash
-# Domain layer importing outward
-find brief_bridge/domain -name "*.py" -exec grep -H "from brief_bridge\.\(application\|infrastructure\)" {} \;
-
-# Application layer importing infrastructure  
-find brief_bridge/application -name "*.py" -exec grep -H "from brief_bridge\.infrastructure" {} \;
-
-# Business logic keywords in wrong layers
-grep -r "business.*rule\|domain.*logic" brief_bridge/application/ brief_bridge/infrastructure/
-```
-
-**Check interface usage:**
-```bash
-# Find concrete repository usage in use cases
-grep -r "Memory.*Repository\|Postgres.*Repository" brief_bridge/application/
+        # Business rule implemented here (correct!)
+        return self.status == "ONLINE" and self.availability == "IDLE"
 ```
 
 ## Validation Completion Checklist
 
-### Layer Structure
-- [ ] All layers have correct directory structure
-- [ ] Files placed in appropriate layers
-- [ ] No unexpected directories or files
+### Architecture Structure
+- [ ] Simple directory structure without over-engineering
+- [ ] UseCases use dependency injection
+- [ ] Entities contain business logic
+- [ ] Repositories are concrete and testable
 
-### Dependency Direction  
-- [ ] Domain layer has zero outward dependencies
-- [ ] Application layer imports only domain
-- [ ] Infrastructure layer can import all layers
-- [ ] Test layer follows same dependency rules
+### Testability
+- [ ] UseCases can be easily unit tested
+- [ ] Dependencies can be mocked
+- [ ] Two-level testing strategy implemented
+- [ ] No hard-coded dependencies
 
-### Interface Boundaries
-- [ ] All repository interfaces in domain
-- [ ] All implementations in infrastructure  
-- [ ] Use cases depend on interfaces, not implementations
-- [ ] Dependency injection used properly
+### Business Logic
+- [ ] Business rules in entities, not UseCases
+- [ ] UseCases orchestrate, don't implement business logic
+- [ ] Simple data structures used throughout
+- [ ] Framework only handles data conversion
 
-### Business Logic Placement
-- [ ] All business rules in domain layer
-- [ ] Use cases contain only orchestration logic
-- [ ] Infrastructure contains only technical concerns
-- [ ] No business logic in test layer
+### Practical Simplicity
+- [ ] No unnecessary abstractions
+- [ ] Code is easy to understand and maintain
+- [ ] Testing is straightforward
+- [ ] Architecture serves the business, not the other way around
 
-## Remediation Actions
-
-**If violations found:**
-
-**Step 1: Document Violations**
-- List specific files and line numbers
-- Categorize violation type (dependency, business logic, etc.)
-- Assess impact and priority
-
-**Step 2: Fix Architecture Issues**  
-- Move business rules to domain entities/services
-- Replace concrete dependencies with interfaces
-- Extract business logic from use cases
-- Update imports to respect layer boundaries
-
-**Step 3: Re-validate**
-- Run validation commands again
-- Ensure no new violations introduced
-- Verify all tests still pass
-
-**Step 4: Prevent Future Violations**
-- Add architecture validation to CI/CD
-- Document architecture decisions
-- Review architecture compliance in code reviews
-
-## Next Steps
+## Action Items
 
 **If validation passes:**
-✅ Architecture is compliant - continue development
+✅ Architecture follows simplified principles - continue development
 
-**If violations found:**
-🔧 Fix violations before proceeding with new features
+**If validation fails:**
+🔧 Identify specific violations:
+1. Move business logic from UseCases to entities
+2. Implement dependency injection in UseCases
+3. Simplify over-engineered abstractions
+4. Ensure testability at two levels
 
-**For ongoing compliance:**  
-📋 Run validation checks regularly during development
+**For ongoing quality:**
+📋 Apply these validation criteria to all new code and refactoring

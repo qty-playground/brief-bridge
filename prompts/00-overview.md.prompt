@@ -1,7 +1,7 @@
 # Brief Bridge BDD Implementation - Overview
 
 ## Mission
-Implement Brief Bridge system using systematic BDD (Behavior-Driven Development) approach with pytest-bdd, following Clean Architecture principles.
+Implement Brief Bridge system using systematic BDD (Behavior-Driven Development) approach with pytest-bdd, following simplified architecture principles focused on testability and maintainability.
 
 ## Implementation Methodology
 
@@ -46,7 +46,7 @@ These documents contain the design specifications:
 - `docs/clean-architecture-structure.md`: Code organization and dependencies  
 - `docs/user-stories/`: Detailed technical specifications per feature
 - `docs/prd.md`: Business requirements and context
-- `prompts/reference/python-coding-style.md.prompt`: Python coding standards for Clean Architecture
+- `prompts/reference/python-coding-style.md.prompt`: Python coding standards for simplified architecture
 
 ## Usage Instructions
 
@@ -64,9 +64,49 @@ These documents contain the design specifications:
 ## Success Criteria
 
 - All user story scenarios implemented as passing BDD tests
-- Clean Architecture principles maintained throughout
+- Clean Architecture principles maintained throughout  
 - All business rules properly enforced in domain layer
 - Test responsibilities clearly separated from production code
+- **Architecture stays simple** - avoid over-engineering, start minimal
+
+## Simplified Architecture Philosophy
+
+**CRITICAL: Framework ↔ UseCase ↔ Entity/Repository with Dependency Injection**
+
+This development process emphasizes **practical simplicity** over architectural purity:
+
+### Core Architecture
+1. **Framework/Controller**: Handles HTTP requests, converts to simple data structures
+2. **UseCase**: Business logic orchestration with injected dependencies
+3. **Entity/Repository**: Business entities and data persistence
+4. **One Data Conversion**: Framework DTO → UseCase input/output only
+
+### Testing Strategy: Two Levels Only
+1. **E2E Tests**: Through web framework (full integration)
+2. **UseCase Tests**: Direct UseCase testing with mocked dependencies
+
+### What We Build vs What We Avoid
+
+**✅ We Build (Simple & Testable):**
+- UseCases with dependency injection for external dependencies
+- Simple entities with clear business methods
+- Concrete repository implementations 
+- Dict/simple classes for data inside UseCases
+- Self-documenting method names
+
+**❌ We Avoid (Over-Engineering):**
+- Multiple abstraction layers
+- Complex value object hierarchies
+- Strict layered dependency enforcement
+- Excessive interfaces before needed
+- Complex domain events for simple state changes
+
+### Development Philosophy
+- **Testability over purity**: Easy to test is more important than perfect architecture
+- **Dependency injection for external dependencies**: Repositories, services, APIs
+- **Simple data structures internally**: Use what works, don't over-model
+- **Business logic in entities**: Keep domain rules in entity classes
+- **Practical over theoretical**: If it's hard to understand or test, simplify it
 
 ---
 

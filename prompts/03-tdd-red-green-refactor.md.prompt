@@ -1,7 +1,7 @@
 # Phase 3: TDD RED-GREEN-REFACTOR Cycle
 
 ## Objective
-Implement production code using Test-Driven Development methodology with Clean Architecture, focusing on ONE scenario at a time.
+Implement production code using Test-Driven Development methodology with simplified architecture (Framework ↔ UseCase ↔ Entity/Repository), focusing on ONE scenario at a time.
 
 ## Prerequisites
 - Feature file exists with @skip scenarios
@@ -14,9 +14,9 @@ Implement production code using Test-Driven Development methodology with Clean A
 Use the Read tool to load:
 1. `tests/{specified_feature}/story.feature` - Feature file with scenarios
 2. `docs/domain-model.md` - For business rules and entities
-3. `docs/clean-architecture-structure.md` - For code organization
+3. `docs/clean-architecture-structure.md` - For code organization (adapted to simplified architecture)
 4. `docs/user-stories/{specified_feature}.md` - For business rules reference
-5. `prompts/reference/python-coding-style.md.prompt` - For coding standards
+5. `prompts/reference/python-coding-style.md.prompt` - For simplified architecture coding standards
 
 ## TDD Process Overview
 
@@ -163,38 +163,43 @@ pytest -m wip  # Should PASS
 
 **Example Implementation:**
 ```python
-# brief_bridge/domain/entities/client.py (enhanced)
+# brief_bridge/entities/client.py (enhanced with simple structure)
 class Client:
-    def __init__(self, client_id: ClientId, client_info: ClientInfo):
-        self._client_id = client_id
-        self._client_info = client_info
-        self._status = ClientStatus.ONLINE  # Business rule: client.registration
-        self._availability = ClientAvailability.IDLE
-        self._last_heartbeat = datetime.now(timezone.utc)
+    def __init__(self, client_id: str, client_info: dict):
+        self.client_id = client_id
+        self.client_info = client_info
+        self.status = "ONLINE"  # Business rule: client.registration
+        self.availability = "IDLE"
+        self.last_heartbeat = datetime.now(timezone.utc)
     
     def mark_online(self):
         # Business rule: client.heartbeat
-        self._status = ClientStatus.ONLINE
-        self._last_heartbeat = datetime.now(timezone.utc)
+        self.status = "ONLINE"
+        self.last_heartbeat = datetime.now(timezone.utc)
     
     def mark_offline(self):
-        self._status = ClientStatus.OFFLINE
-        self._availability = ClientAvailability.IDLE
+        self.status = "OFFLINE"
+        self.availability = "IDLE"
+        
+    def can_accept_new_command(self) -> bool:
+        """Business rule: client availability check"""
+        return self.status == "ONLINE" and self.availability == "IDLE"
 
-# tests/{feature}/given_steps.py (updated)
-@given('client "{client_id}" exists with status "{status}" and availability "{availability}"')
-def given_client_exists(client_id, status, availability, client_repository):
+# tests/{feature}/given_create_client_with_status.py (updated)
+def invoke(ctx: TestContext) -> None:
     # Now with proper business rule implementation
-    client_info = ClientInfo(os="Linux", architecture="x86_64", version="Ubuntu 20.04")
-    client = Client(ClientId(client_id), client_info)
+    client_info = {"hostname": "test-host", "os": "Linux"}
+    client = Client(ctx.client_id, client_info)
     
     # Business rule: client status management
-    if status == "ONLINE":
+    if ctx.status == "ONLINE":
         client.mark_online()
-    elif status == "OFFLINE":
+    elif ctx.status == "OFFLINE":
         client.mark_offline()
     
-    asyncio.run(client_repository.save(client))
+    # Use injected repository (will be provided in actual implementation)
+    # asyncio.run(client_repository.save(client))
+    ctx.created_client = client  # Store for other steps to use
 ```
 
 **Stage 2 Validation:**
@@ -204,6 +209,63 @@ pytest -m wip  # Should still PASS
 - [ ] Test still passes
 - [ ] Real business rules implemented
 - [ ] Only current scenario's business rules addressed
+
+## Simplified Architecture Guidelines
+
+**CRITICAL: Framework ↔ UseCase ↔ Entity/Repository with Dependency Injection**
+
+### What to Build vs What to Avoid
+
+**✅ Build This (Simple & Testable):**
+```python
+# UseCase with dependency injection
+class SubmitCommandUseCase:
+    def __init__(self, client_repo: ClientRepository, command_repo: CommandRepository):
+        self._client_repo = client_repo  # Injected dependency
+        self._command_repo = command_repo  # Injected dependency
+        
+    async def execute(self, request: dict) -> dict:
+        """request: {"client_id": "...", "content": "..."}"""
+        client = await self._client_repo.find(request["client_id"])
+        if not client.can_accept_new_command():
+            raise ClientNotAvailableError()
+            
+        command_id = str(uuid.uuid4())
+        await self._command_repo.save({
+            "id": command_id,
+            "client_id": request["client_id"], 
+            "content": request["content"]
+        })
+        return {"status": "success", "command_id": command_id}
+
+# Simple repository - concrete implementation
+class ClientRepository:
+    def __init__(self):
+        self._clients = {}  # Simple dict storage
+    
+    async def save(self, client: Client) -> None:
+        self._clients[client.client_id] = client
+        
+    async def find(self, client_id: str) -> Client:
+        return self._clients.get(client_id)
+```
+
+**❌ Avoid This (Over-Engineering):**
+```python
+# DON'T create complex abstractions
+class ClientRepositoryInterface(ABC): pass
+class RepositoryFactory: pass
+@dataclass class ClientId: pass  # Just use string
+@dataclass class CommandRequest: pass  # Just use dict
+```
+
+### TDD-Driven Architecture Rules
+
+1. **Dependency injection for external dependencies** - Repositories, services, APIs
+2. **Simple data structures internally** - Use dict, simple classes inside UseCases
+3. **Business logic in entities** - Keep domain rules in entity methods
+4. **Two-level testing** - E2E via framework, Unit via UseCase with mocks
+5. **Testability over purity** - Easy to test is more important than perfect architecture
 
 ### Step 4: REFACTOR Phase (Code Quality)
 

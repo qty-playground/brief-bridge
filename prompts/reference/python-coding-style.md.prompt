@@ -1,26 +1,25 @@
-# Python Coding Style for Clean Architecture
+# Python Coding Style for Simplified Architecture
 
 ## Core Philosophy
 
-**Code should be self-documenting through excellent naming and clear structure. No comments needed if names are excellent.**
+**Code should be self-documenting through excellent naming and clear structure. Prioritize practicality over architectural purity.**
 
-## Critical Import Rules
+## Import Rules
 
-### Absolute Imports Only
-**ALWAYS use absolute imports for Clean Architecture layer separation**
+### Absolute Imports for Clarity
+**Use absolute imports for better code navigation and testing**
 
 ✅ **Good:**
 ```python
-from brief_bridge.domain.entities.client import Client
-from brief_bridge.domain.value_objects.client_id import ClientId
-from brief_bridge.application.services.command_service import CommandService
-from brief_bridge.infrastructure.repositories.client_repository import ClientRepository
+from brief_bridge.entities.client import Client
+from brief_bridge.repositories.client_repository import ClientRepository
+from brief_bridge.use_cases.submit_command_use_case import SubmitCommandUseCase
 ```
 
-❌ **Bad:**
+❌ **Avoid:**
 ```python
 from .client import Client
-from ..value_objects.client_id import ClientId
+from ..repositories.client_repository import ClientRepository
 ```
 
 ### Module-Level Imports
@@ -28,8 +27,8 @@ from ..value_objects.client_id import ClientId
 
 ✅ **Good:**
 ```python
-from brief_bridge.domain.entities.client import Client
-from brief_bridge.domain.exceptions.client_exceptions import ClientBusyError
+from brief_bridge.entities.client import Client
+from brief_bridge.exceptions.client_exceptions import ClientBusyError
 
 def assign_command_to_client(client: Client, command: Command) -> None:
     if client.is_busy():
@@ -37,36 +36,47 @@ def assign_command_to_client(client: Client, command: Command) -> None:
     client.assign_command(command)
 ```
 
-## Clean Architecture Specific Rules
+## Architecture Rules
 
-### Layer Import Direction
-**Follow dependency rule - inner layers never import outer layers**
-
-✅ **Good (Domain layer):**
-```python
-from brief_bridge.domain.value_objects.client_id import ClientId
-from brief_bridge.domain.value_objects.command_content import CommandContent
-```
-
-❌ **Bad (Domain importing Application):**
-```python
-from brief_bridge.application.services.command_service import CommandService  # Wrong!
-```
-
-### Entity and Value Object Naming
-**Use business domain names that explain purpose**
+### Dependency Injection Pattern
+**Use dependency injection for external dependencies, but keep it simple**
 
 ✅ **Good:**
 ```python
-@dataclass
-class ClientRegistrationRequest:
-    client_id: ClientId
-    client_info: ClientInfo
-    registration_timestamp: datetime
+class SubmitCommandUseCase:
+    def __init__(self, client_repo: ClientRepository, command_repo: CommandRepository):
+        self._client_repo = client_repo  # Injected dependency
+        self._command_repo = command_repo  # Injected dependency
+        
+    async def execute(self, request: dict) -> dict:
+        client = await self._client_repo.find(request["client_id"])
+        # Simple data structures, injected dependencies
+        return {"status": "success", "command_id": "cmd-123"}
+```
 
+### Entity Naming
+**Use business domain names, keep data structures simple**
+
+✅ **Good:**
+```python
 class Client:
+    def __init__(self, client_id: str, info: dict):
+        self.client_id = client_id
+        self.info = info
+        self.status = "ONLINE"
+        self.availability = "IDLE"
+    
     def is_available_for_new_command(self) -> bool:
-        return self._status == ClientStatus.ONLINE and not self.has_active_command()
+        return self.status == "ONLINE" and self.availability == "IDLE"
+```
+
+❌ **Avoid Over-Engineering:**
+```python
+@dataclass  # Don't over-complicate simple data
+class ClientRegistrationRequest:
+    client_id: ClientId  # ClientId value object might be overkill
+    client_info: ClientInfo  # ClientInfo value object might be overkill
+    registration_timestamp: datetime
 ```
 
 ## Self-Documenting Code Rules
@@ -74,11 +84,11 @@ class Client:
 ### Method Names Should Tell Complete Story
 ```python
 # ✅ Excellent - business meaning clear
-def submit_command_to_available_client(self, client_id: ClientId, command_content: CommandContent) -> CommandId:
+def submit_command_to_available_client(self, client_id: str, command_content: str) -> str:
     client = self._find_available_client(client_id)
-    command = Command.create_new(command_content, client_id)
-    client.assign_command(command)
-    return command.id
+    command_id = f"cmd-{uuid.uuid4()}"
+    client.assign_command(command_id, command_content)
+    return command_id
 
 # ❌ Poor - needs comments to understand
 def process(self, id: str, content: str) -> str:
@@ -92,65 +102,145 @@ def process(self, id: str, content: str) -> str:
 class Client:
     def can_accept_new_command(self) -> bool:
         """Business rule: client.concurrency - one command per client"""
-        return (self._status == ClientStatus.ONLINE and 
-                self._availability == ClientAvailability.IDLE)
+        return self.status == "ONLINE" and self.availability == "IDLE"
     
-    def mark_as_busy_with_command(self, command: Command) -> None:
+    def assign_command(self, command_id: str, content: str) -> None:
         """Business rule: client state transition"""
         if self.has_active_command():
             raise ClientBusyError("Client already executing command")
-        self._current_command = command
-        self._availability = ClientAvailability.BUSY
+        self.current_command = {"id": command_id, "content": content}
+        self.availability = "BUSY"
 ```
 
-## Type Hints Mandatory
+## Type Hints for Clarity
 
-**ALL functions and variables MUST have type hints for CA clarity**
+**Use type hints for function signatures to improve readability**
 
 ```python
-def create_client(client_info: ClientInfo) -> Client:
-    client_id: ClientId = ClientId.generate()
-    registration_time: datetime = datetime.utcnow()
+def create_client(client_info: dict) -> Client:
+    client_id = str(uuid.uuid4())
+    registration_time = datetime.utcnow()
     return Client(client_id, client_info, registration_time)
 ```
 
 ## Data Structure Rules
 
-### Use Domain Value Objects
-**Never use dictionaries for domain concepts**
+### Use Simple, Clear Data Structures
+**Use dictionaries and simple classes - prioritize readability over complex domain modeling**
 
 ✅ **Good:**
 ```python
-@dataclass
+def create_client(client_info: dict) -> Client:
+    """client_info contains: hostname, os, architecture, capabilities"""
+    return Client(
+        client_id=str(uuid.uuid4()),
+        info=client_info,
+        registration_time=datetime.utcnow()
+    )
+
+class CommandRequest:
+    def __init__(self, client_id: str, content: str, timeout_seconds: int = 30):
+        self.client_id = client_id
+        self.content = content  
+        self.timeout_seconds = timeout_seconds
+```
+
+❌ **Avoid Over-Engineering:**
+```python
+@dataclass  # Might be overkill for simple data
 class ClientInfo:
     hostname: str
-    operating_system: OperatingSystem
-    architecture: Architecture
-    capabilities: List[ClientCapability]
-
-@dataclass  
-class CommandRequest:
-    client_id: ClientId
-    content: CommandContent
-    timeout_seconds: int
+    operating_system: OperatingSystem  # Custom enum might be overkill
+    architecture: Architecture         # Custom enum might be overkill 
+    capabilities: List[ClientCapability]  # Custom class might be overkill
 ```
 
-❌ **Bad:**
-```python
-def create_client(client_data: dict) -> Client:  # What's in the dict?
-    pass
-```
+## Key Principles for Simplified Architecture
 
-## Key Principles for Clean Architecture
-
-1. **Absolute imports only** - Clear layer boundaries
+1. **Absolute imports** - Clear module boundaries
 2. **Self-documenting names** - Business domain language
-3. **No comments needed** - Code explains itself
-4. **Type hints mandatory** - Contract clarity
-5. **Value objects over dicts** - Domain modeling
-6. **Business method names** - Express domain rules
-7. **Respect dependency rule** - Inner layers stay pure
+3. **Dependency injection** - Testable external dependencies
+4. **Simple data structures** - Readability over complex modeling
+5. **Business method names** - Express domain rules clearly
+6. **Two-layer testing** - E2E through framework, Unit through use cases
+
+## Our Simplified Architecture Approach
+
+### Core Framework: Controller ↔ UseCase ↔ Entity/Repository
+
+**Philosophy: Practical simplicity over theoretical purity**
+
+```python
+# ✅ Our preferred structure
+class SubmitCommandUseCase:
+    def __init__(self, client_repo: ClientRepository, command_repo: CommandRepository):
+        self._client_repo = client_repo  # Dependency injection
+        self._command_repo = command_repo  # Dependency injection
+        
+    async def execute(self, request: dict) -> dict:
+        # Simple data structures inside UseCase
+        client = await self._client_repo.find(request["client_id"])
+        if not client.can_accept_new_command():
+            raise ClientNotAvailableError()
+            
+        command_id = str(uuid.uuid4())
+        await self._command_repo.save(command_id, request["content"], client.client_id)
+        return {"status": "success", "command_id": command_id}
+
+# Simple repository - concrete implementation
+class ClientRepository:
+    def __init__(self):
+        self._clients = {}
+    
+    async def save(self, client: Client) -> None:
+        self._clients[client.client_id] = client
+        
+    async def find(self, client_id: str) -> Client:
+        return self._clients.get(client_id)
+```
+
+### Testing Strategy: Two Levels Only
+
+**1. E2E Tests (through web framework)**
+```python
+def test_submit_command_via_http():
+    response = client.post("/commands", json={
+        "client_id": "client-001",
+        "content": "ls -la"
+    })
+    assert response.status_code == 200
+```
+
+**2. UseCase Tests (direct)**
+```python
+def test_submit_command_use_case():
+    # Mock injected dependencies
+    client_repo = Mock()
+    command_repo = Mock()
+    use_case = SubmitCommandUseCase(client_repo, command_repo)
+    
+    result = await use_case.execute({"client_id": "test", "content": "ls"})
+    assert result["status"] == "success"
+```
+
+### Key Principles
+
+1. **One data conversion**: Framework DTO → UseCase input/output
+2. **Dependency injection**: For external dependencies (repos, services)  
+3. **Simple data structures**: Use dict, simple classes inside UseCases
+4. **Business entities**: Keep essential business logic in Entity classes
+5. **Testability focus**: Easy to mock dependencies, simple test setup
+
+### What We Avoid
+
+- ❌ Multiple abstraction layers
+- ❌ Complex value object hierarchies  
+- ❌ Strict layered dependency rules
+- ❌ Over-engineered interfaces
+- ❌ Domain events for simple operations
 
 ## Summary
 
-Focus on **absolute imports for layer separation**, **business domain naming**, and **self-documenting code**. Every class and method should clearly express its business purpose without needing comments.
+Focus on **dependency injection for testability**, **business domain naming**, and **practical simplicity**. Every class should have a clear purpose and be easy to test.
+
+**Architecture goal**: Framework ↔ UseCase ↔ Entity/Repository with dependency injection for external dependencies.

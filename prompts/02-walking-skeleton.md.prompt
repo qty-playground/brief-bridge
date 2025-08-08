@@ -14,7 +14,7 @@ Use the Read tool to load:
 1. `tests/{specified_feature}/story.feature` - The feature file to implement
 2. `docs/user-stories/{specified_feature}.md` - For step definitions reference
 3. Current `pytest.ini` - To understand test configuration
-4. `prompts/reference/python-coding-style.md.prompt` - For coding standards
+4. `prompts/reference/python-coding-style.md.prompt` - For simplified architecture coding standards
 
 ## Step-by-Step Process
 
@@ -84,17 +84,18 @@ Each step module contains exactly ONE `invoke` function following Command Patter
 ```python
 """Given client exists with status - Screaming Architecture naming"""
 from conftest import TestContext
-from brief_bridge.domain.entities.client import Client
-from brief_bridge.domain.value_objects.client_id import ClientId
-from brief_bridge.domain.value_objects.client_status import ClientStatus
+from brief_bridge.entities.client import Client
+from brief_bridge.repositories.client_repository import ClientRepository
 
 def invoke(ctx: TestContext) -> None:
     """
     Business rule: client.registration - create test client with specific status
     Command Pattern implementation for BDD step
     """
-    client_id = ClientId(ctx.client_id)
-    # GREEN Stage 1: Hardcoded fake implementation
+    # Simple data structures, dependency injection for repository
+    client = Client(ctx.client_id, {"hostname": "test-host"})
+    client.status = ctx.status
+    # GREEN Stage 1: Hardcoded fake implementation  
     raise NotImplementedError("Client creation with status not implemented")
 ```
 
@@ -102,14 +103,19 @@ def invoke(ctx: TestContext) -> None:
 ```python
 """When I POST to endpoint - Screaming Architecture naming"""
 from conftest import TestContext
-from brief_bridge.infrastructure.fastapi.main import app
+from brief_bridge.use_cases.submit_command_use_case import SubmitCommandUseCase
 import json
 
 def invoke(ctx: TestContext) -> None:
     """
-    Execute API request through infrastructure layer
+    Execute API request through UseCase layer
     Command Pattern implementation for BDD step
     """
+    # Simple request structure - framework converts to dict
+    request = {
+        "client_id": ctx.client_id,
+        "content": json.loads(ctx.request_body)["content"]
+    }
     # GREEN Stage 1: Hardcoded fake implementation
     raise NotImplementedError("API request execution not implemented")
 ```
@@ -209,6 +215,64 @@ Each step module:
 - Has business-descriptive docstring
 - Uses absolute imports only
 - Implements single responsibility
+
+### Simplified Architecture for Walking Skeleton
+
+**IMPORTANT: Framework ↔ UseCase ↔ Entity/Repository with Dependency Injection**
+
+**✅ Do This (Simple & Testable):**
+```python
+# UseCase with dependency injection
+class RegisterClientUseCase:
+    def __init__(self, client_repository: ClientRepository):
+        self._client_repository = client_repository  # Injected dependency
+        
+    async def execute(self, request: dict) -> dict:
+        """request: {"client_id": "...", "info": {...}}"""
+        client = Client(request["client_id"], request["info"])
+        await self._client_repository.save(client)
+        return {"client_id": client.client_id, "status": "registered"}
+
+# Simple repository - concrete implementation
+class ClientRepository:
+    def __init__(self):
+        self._clients = {}  # Simple dict storage
+        
+    async def save(self, client: Client) -> None:
+        self._clients[client.client_id] = client
+        
+    async def find(self, client_id: str) -> Client:
+        return self._clients.get(client_id)
+
+# Simple entity with business logic
+class Client:
+    def __init__(self, client_id: str, info: dict):
+        self.client_id = client_id
+        self.info = info
+        self.status = "ONLINE"
+        self.availability = "IDLE"
+        
+    def can_accept_new_command(self) -> bool:
+        """Business rule: client availability check"""
+        return self.status == "ONLINE" and self.availability == "IDLE"
+```
+
+**❌ Avoid This (Over-Engineering):**
+```python
+# DON'T create complex abstractions in walking skeleton
+class ClientRepositoryInterface(ABC): pass
+class ClientFactory: pass
+class ClientDomainService: pass
+@dataclass class ClientId: pass  # Just use string
+@dataclass class ClientInfo: pass  # Just use dict
+```
+
+**Walking Skeleton Architecture Rules:**
+1. **Dependency Injection**: Inject repositories/services into UseCases
+2. **Simple Data Structures**: Use dict/simple classes, avoid complex value objects
+3. **Concrete Implementations**: Start with concrete classes, abstract later if needed
+4. **Business Logic in Entities**: Keep domain rules in entity methods
+5. **Two-Level Testing**: E2E via framework, Unit via UseCase with mocked dependencies
 
 ## Completion Checklist
 - [ ] Feature directory created with step module structure

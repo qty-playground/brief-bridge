@@ -1,7 +1,7 @@
-# Test Responsibility Boundary Validation
+# Test Responsibility Boundary Validation (Simplified Architecture)
 
 ## Objective
-Ensure BDD tests maintain proper boundaries between behavior specification and implementation details, with clear responsibility separation.
+Ensure BDD tests maintain proper boundaries between behavior specification and implementation details, with clear responsibility separation for our simplified architecture approach.
 
 ## When to Use
 - After implementing each scenario
@@ -14,12 +14,12 @@ Ensure BDD tests maintain proper boundaries between behavior specification and i
 
 Use the Read tool to load:
 1. Current feature file: `tests/{feature}/story.feature`
-2. Step implementations: `tests/{feature}/{given,when,then}_steps.py`
+2. Step implementations: `tests/{feature}/{given,when,then}_*.py`
 3. Domain model: `docs/domain-model.md` - For business rule reference
 4. User story: `docs/user-stories/{feature}.md` - For expected behavior
-5. `prompts/reference/python-coding-style.md.prompt` - For coding standards
+5. `prompts/reference/python-coding-style.md.prompt` - For simplified architecture coding standards
 
-## Test Responsibility Framework
+## Test Responsibility Framework for Simplified Architecture
 
 ### Level 1: Feature File (Behavior Specification)
 **ONLY specifies WHAT the system should do**
@@ -55,112 +55,140 @@ Feature: Submit Command
 - [ ] **Domain-focused**: Steps relate to business concepts (Client, Command, etc.)
 
 ### Level 2: Step Definitions (Behavior Implementation)
-**Translates business language to system actions**
+**Translates business language to system actions using simplified architecture**
 
 **Step Responsibility Boundaries:**
 
 **Given Steps - Test Data Setup:**
 ```python
-@given('client "{client_id}" exists with status "{status}" and availability "{availability}"')
-def given_client_exists_with_status_and_availability_in_system(client_id: str, status: str, availability: str, client_repository: ClientRepository) -> None:
+# tests/{feature}/given_create_client_with_status.py
+from conftest import TestContext
+from brief_bridge.entities.client import Client
+from brief_bridge.repositories.client_repository import ClientRepository
+
+def invoke(ctx: TestContext) -> None:
     """
     Business rule: client.registration - setup test client with specific status
     ✅ RESPONSIBLE FOR: Setting up test preconditions
     ❌ NOT RESPONSIBLE FOR: Business logic implementation
     """
-    # ✅ Correct: Delegates to domain layer with absolute imports
-    from brief_bridge.domain.entities.client import Client
-    from brief_bridge.domain.value_objects.client_id import ClientId
-    from brief_bridge.domain.value_objects.client_info import ClientInfo
-    from brief_bridge.domain.value_objects.client_status import ClientStatus
-    import asyncio
+    # ✅ Correct: Simple data structures, dependency injection for repository
+    client = Client(ctx.client_id, {"hostname": "test-host"})
+    client.status = ctx.status
+    client.availability = ctx.availability
     
-    client_info = ClientInfo.create_default_linux()
-    client = Client(ClientId(client_id), client_info)
-    client.set_client_status_in_system(ClientStatus(status))
-    
-    # Uses repository interface (not implementation details)
-    asyncio.run(client_repository.save_client_to_system(client))
+    # Uses repository interface (injected dependency)
+    client_repository = ctx.injected_client_repository
+    await client_repository.save(client)
 ```
 
 **When Steps - Action Execution:**
 ```python
-@when('I POST to "{endpoint}" with: {json_payload}')
-def when_i_post_to_endpoint_with_payload(endpoint, json_payload):
+# tests/{feature}/when_submit_api_request.py
+from conftest import TestContext
+from brief_bridge.use_cases.submit_command_use_case import SubmitCommandUseCase
+import json
+
+def invoke(ctx: TestContext) -> None:
     """
     ✅ RESPONSIBLE FOR: Triggering system actions
     ❌ NOT RESPONSIBLE FOR: Validating business rules
     """
-    # ✅ Correct: Captures response for Then steps to verify
-    global test_context
-    response = test_client.post(endpoint, json=json.loads(json_payload))
-    test_context.last_response = response
+    # ✅ Correct: Simple request structure - framework converts to dict
+    request = {
+        "client_id": ctx.client_id,
+        "content": json.loads(ctx.request_body)["content"]
+    }
+    
+    # Use injected UseCase with mocked dependencies
+    use_case = ctx.injected_submit_command_use_case
+    ctx.last_response = await use_case.execute(request)
 ```
 
 **Then Steps - Outcome Verification:**
 ```python
-@then('response status code should be {status_code:d}')
-def then_response_status_code_should_be(status_code):
+# tests/{feature}/then_verify_response_status.py
+from conftest import TestContext
+
+def invoke(ctx: TestContext) -> None:
     """
     ✅ RESPONSIBLE FOR: Verifying observable outcomes
     ❌ NOT RESPONSIBLE FOR: Internal system state verification
     """
     # ✅ Correct: Verifies external system response
-    assert test_context.last_response.status_code == status_code
+    assert ctx.last_response["status"] == "success"
+    assert "command_id" in ctx.last_response
 ```
 
 **Step Implementation Validation Checklist:**
-- [ ] **Given steps**: Only set up test preconditions using domain entities
+- [ ] **Given steps**: Only set up test preconditions using entities and dependency injection
 - [ ] **When steps**: Only trigger system actions, capture responses
 - [ ] **Then steps**: Only verify observable system outputs
-- [ ] **No business logic**: Steps delegate to domain layer, don't implement rules
-- [ ] **Interface usage**: Use domain interfaces, not concrete implementations
+- [ ] **No business logic**: Steps delegate to entities/UseCases, don't implement rules
+- [ ] **Dependency injection**: Use injected repositories and UseCases for testability
 
-### Level 3: Domain Layer (Business Logic Implementation)
+### Level 3: Entity/UseCase Layer (Business Logic Implementation)
 **WHERE business rules are actually implemented and tested**
 
 **Business logic belongs here:**
 ```python
-# brief_bridge/domain/entities/client.py
+# brief_bridge/entities/client.py
 class Client:
-    def assign_command(self, command: Command):
+    def assign_command(self, command_id: str, content: str) -> None:
         """Business rule: client.concurrency - one command per client"""
         if self.has_active_command():
             raise ClientBusyError("Client already executing command")
-        self._current_command = command
-        self._availability = ClientAvailability.BUSY
+        self.current_command = {"id": command_id, "content": content}
+        self.availability = "BUSY"
         
-    def is_available_for_command(self) -> bool:
+    def can_accept_new_command(self) -> bool:
         """Business rule: command.target_validation"""
-        return (self._status == ClientStatus.ONLINE and 
-                self._availability == ClientAvailability.IDLE)
+        return self.status == "ONLINE" and self.availability == "IDLE"
+
+# brief_bridge/use_cases/submit_command_use_case.py
+class SubmitCommandUseCase:
+    def __init__(self, client_repo: ClientRepository, command_repo: CommandRepository):
+        self._client_repo = client_repo  # Injected dependency
+        self._command_repo = command_repo  # Injected dependency
+        
+    async def execute(self, request: dict) -> dict:
+        """UseCase orchestrates business operations"""
+        client = await self._client_repo.find(request["client_id"])
+        if not client.can_accept_new_command():  # Business rule in entity
+            raise ClientNotAvailableError()
+            
+        command_id = str(uuid.uuid4())
+        client.assign_command(command_id, request["content"])  # Business rule in entity
+        await self._command_repo.save(command_id, request["content"])
+        
+        return {"status": "success", "command_id": command_id}
 ```
 
-## Common Test Responsibility Violations
+## Common Test Responsibility Violations (Simplified Architecture)
 
 ### Violation 1: Business Logic in Steps
 
 **❌ Wrong: Business rule implemented in step**
 ```python
-@given('client "{client_id}" exists with status "{status}"')
-def given_client_exists(client_id, status):
-    client = Client(ClientId(client_id))
+def invoke(ctx: TestContext) -> None:
+    client = Client(ctx.client_id, {"hostname": "test-host"})
     # ❌ Business logic in test step
-    if status == "OFFLINE":
-        client._status = ClientStatus.OFFLINE
-        client._last_heartbeat = datetime.now() - timedelta(minutes=10)
+    if ctx.status == "OFFLINE":
+        client.status = "OFFLINE"
+        client.availability = "IDLE"
+        client.last_heartbeat = datetime.now() - timedelta(minutes=10)
     else:
-        client._status = ClientStatus.ONLINE
-        client._last_heartbeat = datetime.now()
+        client.status = "ONLINE"
+        client.availability = "IDLE"
+        client.last_heartbeat = datetime.now()
 ```
 
-**✅ Correct: Delegate to domain entity**
+**✅ Correct: Delegate to entity**
 ```python
-@given('client "{client_id}" exists with status "{status}"')
-def given_client_exists(client_id, status):
-    client = Client(ClientId(client_id))
-    # ✅ Domain entity handles business logic
-    if status == "OFFLINE":
+def invoke(ctx: TestContext) -> None:
+    client = Client(ctx.client_id, {"hostname": "test-host"})
+    # ✅ Entity handles business logic
+    if ctx.status == "OFFLINE":
         client.mark_offline()
     else:
         client.mark_online()
@@ -171,37 +199,37 @@ def given_client_exists(client_id, status):
 **❌ Wrong: Technical implementation in Gherkin**
 ```gherkin
 Scenario: Database constraint validation
-  Given a Client entity exists in postgres table "clients"
-  When I call ClientRepository.save() method
-  Then a DatabaseConstraintError should be raised
+  Given a Client entity exists in memory repository
+  When I call SubmitCommandUseCase.execute() method
+  Then a ClientNotAvailableError should be raised
 ```
 
 **✅ Correct: Business behavior focus**
 ```gherkin  
-Scenario: Reject duplicate client registration
-  Given client "client-001" is already registered
-  When I register client "client-001" again
-  Then registration should be rejected with "Client already exists" error
+Scenario: Reject command to busy client
+  Given client "client-001" is already executing a command
+  When I submit command "ls -la" to client "client-001"
+  Then command submission should be rejected with "Client busy" error
 ```
 
 ### Violation 3: Internal State Verification in Then Steps
 
 **❌ Wrong: Verifying internal object state**
 ```python
-@then('client availability should be updated to "{availability}"')
-def then_client_availability_updated(availability):
+def invoke(ctx: TestContext) -> None:
     # ❌ Accessing internal state
-    client = test_context.created_client
-    assert client._availability == ClientAvailability(availability)
+    client = ctx.created_client
+    assert client.availability == "BUSY"
+    assert client.current_command["id"] == ctx.expected_command_id
 ```
 
 **✅ Correct: Verifying observable system response**
 ```python
-@then('client status endpoint should return availability "{availability}"')
-def then_client_status_shows_availability(availability):
+def invoke(ctx: TestContext) -> None:
     # ✅ Verifying external system response
-    response = test_client.get(f"/clients/{test_context.client_id}/status")
-    assert response.json()["availability"] == availability
+    response = ctx.last_response
+    assert response["status"] == "success"
+    assert "command_id" in response
 ```
 
 ## Test Boundary Validation Process
@@ -218,69 +246,70 @@ def then_client_status_shows_availability(availability):
 
 **For each Given step:**
 - [ ] **Precondition only**: Sets up required system state
-- [ ] **Domain entities**: Uses proper domain entities and value objects
-- [ ] **No business logic**: Delegates logic to domain layer
-- [ ] **Repository interface**: Uses domain repository interfaces
+- [ ] **Entity usage**: Uses entities with business logic
+- [ ] **No business logic**: Delegates logic to entity layer
+- [ ] **Dependency injection**: Uses injected repositories
 
 ### Step 3: When Steps Analysis
 
 **For each When step:**
-- [ ] **Action trigger**: Only triggers system actions
+- [ ] **Action trigger**: Only triggers system actions via UseCases
 - [ ] **Response capture**: Captures responses for verification
 - [ ] **No validation**: Doesn't validate outcomes (That's Then's job)
-- [ ] **External interface**: Interacts through external system interface (HTTP, etc.)
+- [ ] **Simple data**: Uses simple data structures (dict, simple classes)
 
 ### Step 4: Then Steps Analysis
 
 **For each Then step:**
 - [ ] **Observable verification**: Only checks external system responses
 - [ ] **No internal access**: Doesn't access internal object state
-- [ ] **Domain agnostic**: Doesn't know about internal domain implementation
+- [ ] **UseCase agnostic**: Doesn't know about internal UseCase implementation
 - [ ] **User perspective**: Verifies what user would observe
 
 ### Step 5: Business Logic Location Check
 
-**Verify business rules are in domain layer:**
+**Verify business rules are in correct layer:**
 - [ ] **Client management**: Rules in Client entity
-- [ ] **Command processing**: Rules in Command entity  
-- [ ] **Distribution logic**: Rules in domain services
-- [ ] **Validation rules**: Rules in value objects
+- [ ] **Command processing**: Rules in Command entity and UseCases  
+- [ ] **UseCase orchestration**: Rules coordinated via dependency injection
+- [ ] **Validation rules**: Rules in entity methods
 
-## Responsibility Matrix
+## Responsibility Matrix (Simplified Architecture)
 
-| Component | Feature File | Given Steps | When Steps | Then Steps | Domain Layer |
-|-----------|-------------|-------------|------------|-------------|-------------|
-| **Business Requirements** | ✅ Specify | ❌ No | ❌ No | ❌ No | ✅ Implement |
-| **Test Data Setup** | ❌ No | ✅ Coordinate | ❌ No | ❌ No | ❌ No |
-| **System Actions** | ✅ Specify | ❌ No | ✅ Trigger | ❌ No | ❌ No |
-| **Outcome Verification** | ✅ Specify | ❌ No | ❌ No | ✅ Verify | ❌ No |
-| **Business Logic** | ❌ No | ❌ No | ❌ No | ❌ No | ✅ Implement |
+| Component | Feature File | Given Steps | When Steps | Then Steps | Entities | UseCases |
+|-----------|-------------|-------------|------------|-------------|----------|----------|
+| **Business Requirements** | ✅ Specify | ❌ No | ❌ No | ❌ No | ✅ Implement | ✅ Orchestrate |
+| **Test Data Setup** | ❌ No | ✅ Coordinate | ❌ No | ❌ No | ❌ No | ❌ No |
+| **System Actions** | ✅ Specify | ❌ No | ✅ Trigger | ❌ No | ❌ No | ✅ Execute |
+| **Outcome Verification** | ✅ Specify | ❌ No | ❌ No | ✅ Verify | ❌ No | ❌ No |
+| **Business Logic** | ❌ No | ❌ No | ❌ No | ❌ No | ✅ Implement | ✅ Coordinate |
+| **Dependency Injection** | ❌ No | ✅ Use | ✅ Use | ❌ No | ❌ No | ✅ Require |
 
 ## Validation Commands
 
 **Check for business logic in steps:**
 ```bash
 # Look for business rule implementation in test steps
-grep -r "if.*status\|if.*availability\|BusinessRule" tests/*/given_steps.py tests/*/when_steps.py tests/*/then_steps.py
+grep -r "if.*status\|if.*availability\|Business.*rule" tests/*/given_*.py tests/*/when_*.py tests/*/then_*.py
 ```
 
-**Check for internal state access:**
+**Check for dependency injection usage:**
 ```bash
-# Look for internal attribute access
-grep -r "\._[a-zA-Z]" tests/*/then_steps.py
+# Look for proper dependency injection in steps
+grep -r "ctx\.injected_" tests/
 ```
 
 **Check feature file language:**
 ```bash
 # Look for technical implementation details
-grep -r "Repository\|Entity\|Service\|Database" tests/*/story.feature
+grep -r "UseCase\|Repository\|Entity\|class\|method" tests/*/story.feature
 ```
 
 ## Remediation Guidelines
 
 ### Fix Business Logic in Steps
-1. **Move logic to domain entities/services**
-2. **Update steps to use domain methods**
+1. **Move logic to entities**
+2. **Update steps to use entity methods**  
 3. **Ensure proper separation of concerns**
 
 ### Fix Implementation Details in Features
@@ -290,8 +319,13 @@ grep -r "Repository\|Entity\|Service\|Database" tests/*/story.feature
 
 ### Fix Internal State Verification
 1. **Replace with external system verification**
-2. **Use HTTP endpoints or observable interfaces**
+2. **Use response data or observable interfaces**
 3. **Test behavior, not implementation**
+
+### Improve Testability
+1. **Use dependency injection in steps**
+2. **Mock external dependencies**
+3. **Keep data structures simple**
 
 ## Completion Checklist
 
@@ -302,21 +336,22 @@ grep -r "Repository\|Entity\|Service\|Database" tests/*/story.feature
 - [ ] Scenarios read like user requirements
 
 ### Step Implementations
-- [ ] Given steps only set up preconditions
-- [ ] When steps only trigger actions
+- [ ] Given steps only set up preconditions with entities
+- [ ] When steps only trigger actions via UseCases
 - [ ] Then steps only verify observable outcomes
 - [ ] No business logic implemented in any steps
+- [ ] Dependency injection used properly
 
-### Domain Integration
-- [ ] All business rules implemented in domain layer
-- [ ] Steps delegate to domain entities/services
-- [ ] Repository interfaces used correctly
-- [ ] Clean separation between test and business logic
+### Entity/UseCase Integration
+- [ ] All business rules implemented in entities
+- [ ] UseCases orchestrate via dependency injection
+- [ ] Clear separation between test and business logic
+- [ ] Two-level testing strategy implemented
 
-### Test Quality
-- [ ] Tests are maintainable and readable
-- [ ] No duplication of business logic
+### Simplified Architecture Compliance
 - [ ] Tests focus on behavior, not implementation
+- [ ] Architecture remains simple and testable
+- [ ] No over-engineering in test setup
 - [ ] Clear responsibility boundaries maintained
 
 ## Next Steps
@@ -325,7 +360,11 @@ grep -r "Repository\|Entity\|Service\|Database" tests/*/story.feature
 ✅ Test boundaries are correct - scenario ready for completion
 
 **If violations found:**
-🔧 Fix responsibility violations before proceeding
+🔧 Fix responsibility violations:
+1. Move business logic from steps to entities
+2. Implement proper dependency injection
+3. Simplify test setup
+4. Focus on observable behavior
 
 **For ongoing quality:**
-📋 Apply these validation criteria to all future scenarios
+📋 Apply these validation criteria to all future scenarios with simplified architecture in mind
