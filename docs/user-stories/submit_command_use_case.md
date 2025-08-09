@@ -1,25 +1,31 @@
 # Submit Command Use Case
 
 ## Business Context
-The SubmitCommandUseCase is responsible for handling command submission from AI assistants to target clients in the Brief Bridge system. This use case manages the business logic of command distribution, target validation, and command lifecycle management at the application layer level.
+The SubmitCommandUseCase is responsible for handling command submission from AI assistants to target clients in the Brief Bridge system. This use case manages command submission, waits for execution completion, and returns results to the AI assistant.
+
+**Key Change**: The AI assistant now waits for command execution results instead of just submitting and returning immediately.
 
 ## Use Case Specification
 - **Use Case**: SubmitCommandUseCase.execute_command_submission()
 - **Input**: CommandSubmissionRequest(target_client_id, command_content, command_type)
-- **Output**: CommandSubmissionResponse(command_id, target_client_id, submission_successful, submission_message)
+- **Output**: CommandSubmissionResponse(command_id, target_client_id, submission_successful, submission_message, result, error, execution_time)
 - **Dependencies**: ClientRepository, CommandRepository interfaces
 
 ## Business Rules
 - **command.target_validation**: Commands can only be submitted to registered clients
 - **command.unique_id**: Each command gets a unique identifier for tracking
 - **command.pending_state**: Newly submitted commands start in "pending" status
+- **command.execution_wait**: AI waits for command execution completion (up to 30 seconds)
+- **command.status_flow**: pending → processing → completed/failed
+- **command.result_capture**: Execution output, errors, and timing are captured
 - **client.online_check**: Target client must be registered (availability check deferred)
 
 ## Test Scenarios
 
-### Scenario: Submit command to registered client successfully
+### Scenario: Submit command and wait for successful execution
 ```
-Given client "test-client-001" is registered in system
+Given client "test-client-001" is registered and online
+And client will execute commands successfully
 When I submit command with:
   - target_client_id: "test-client-001"
   - command_content: "echo 'Hello from AI'"
@@ -29,19 +35,60 @@ And submission response should contain:
   - command_id: [generated-uuid]
   - target_client_id: "test-client-001"
   - submission_successful: true
-  - submission_message: "Command submitted successfully"
+  - submission_message: "Command executed successfully"
+  - result: "Hello from AI"
+  - execution_time: [positive-number]
 And command should be saved in repository with:
   - command_id: [generated-uuid]
   - target_client_id: "test-client-001"
   - content: "echo 'Hello from AI'"
   - type: "shell"
-  - status: "pending"
-  - created_at: [current-timestamp]
+  - status: "completed"
+  - result: "Hello from AI"
+  - completed_at: [current-timestamp]
+  - execution_time: [positive-number]
 ```
 
-### Scenario: Submit command with minimal information
+### Scenario: Submit command and wait for failed execution
 ```
-Given client "minimal-client" is registered in system
+Given client "test-client-001" is registered and online
+And client will execute commands with failure
+When I submit command with:
+  - target_client_id: "test-client-001"
+  - command_content: "nonexistent-command"
+  - command_type: "shell"
+Then command submission should fail
+And submission response should contain:
+  - command_id: [generated-uuid]
+  - target_client_id: "test-client-001"
+  - submission_successful: false
+  - submission_message: "Command execution failed"
+  - error: "Command not found"
+And command should be saved in repository with:
+  - status: "failed"
+  - error: "Command not found"
+```
+
+### Scenario: Submit command with timeout (no client response)
+```
+Given client "offline-client" is registered but offline
+When I submit command with:
+  - target_client_id: "offline-client"
+  - command_content: "echo 'test'"
+  - command_type: "shell"
+Then command submission should fail after 30 seconds
+And submission response should contain:
+  - submission_successful: false
+  - submission_message: "Command execution timeout"
+  - error: "timeout"
+And command should remain in repository with:
+  - status: "pending"
+```
+
+### Scenario: Submit command with minimal information and wait for result
+```
+Given client "minimal-client" is registered and online
+And client will execute commands successfully
 When I submit command with:
   - target_client_id: "minimal-client"
   - command_content: "pwd"
@@ -50,12 +97,14 @@ And submission response should contain:
   - command_id: [generated-uuid]
   - target_client_id: "minimal-client"
   - submission_successful: true
+  - result: [directory-path]
 And command should be saved in repository with:
   - command_id: [generated-uuid]
   - target_client_id: "minimal-client"
   - content: "pwd"
   - type: "shell"  # default type
-  - status: "pending"
+  - status: "completed"
+  - result: [directory-path]
 ```
 
 ### Scenario: Submit command to unregistered client
@@ -98,7 +147,9 @@ And no command should be saved in repository
 ```
 
 ## Notes
-- Command execution and result handling are separate use cases
-- This use case focuses purely on command submission and validation
-- Actual command dispatch to clients happens via polling mechanism
-- Command status lifecycle: pending → dispatched → running → completed/failed
+- This use case now handles both command submission AND result waiting
+- AI assistants get synchronous response with execution results
+- Client polling and result submission happen asynchronously
+- Command status lifecycle: pending → processing → completed/failed
+- Maximum wait time is 30 seconds before timeout
+- New command fields: result, error, execution_time, started_at, completed_at

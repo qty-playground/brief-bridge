@@ -4,11 +4,15 @@ from conftest import BDDPhase
 
 # Import step modules
 from . import given_client_is_registered_in_system
+from . import given_client_is_registered_and_online
+from . import given_client_is_registered_but_offline
+from . import given_client_will_execute_commands_successfully
 from . import given_no_client_exists_with_id
 from . import given_no_preconditions
 from . import when_submit_command_with_data as when_submit_command_module
 from . import then_command_submission_should_be_successful
 from . import then_command_submission_should_fail
+from . import then_command_submission_should_fail_after_timeout
 from . import then_submission_response_should_contain
 from . import then_command_should_be_saved_in_repository
 from . import then_no_command_should_be_saved_in_repository
@@ -79,3 +83,31 @@ def then_no_command_was_saved_in_repository(context):
     # Set THEN phase
     context.phase = BDDPhase.THEN
     then_no_command_should_be_saved_in_repository.invoke(context)
+
+@given(parsers.parse('client "{client_id}" is registered and online'))
+def given_client_is_registered_and_online_step(context, client_id):
+    """Delegate to given_client_is_registered_and_online step module"""
+    # Set GIVEN phase and pass parameters directly to invoke()
+    context.phase = BDDPhase.GIVEN
+    given_client_is_registered_and_online.invoke(context, client_id=client_id)
+
+@given('client will execute commands successfully')
+def given_client_will_execute_commands_successfully_step(context):
+    """Delegate to given_client_will_execute_commands_successfully step module"""
+    # Set GIVEN phase
+    context.phase = BDDPhase.GIVEN
+    given_client_will_execute_commands_successfully.invoke(context)
+
+@given(parsers.parse('client "{client_id}" is registered but offline'))
+def given_client_is_registered_but_offline_step(context, client_id):
+    """Delegate to given_client_is_registered_but_offline step module"""
+    # Set GIVEN phase and pass parameters directly to invoke()
+    context.phase = BDDPhase.GIVEN
+    given_client_is_registered_but_offline.invoke(context, client_id=client_id)
+
+@then('command submission should fail after timeout')
+def then_command_submission_should_fail_after_timeout_step(context):
+    """Delegate to then_command_submission_should_fail_after_timeout step module"""
+    # Set THEN phase
+    context.phase = BDDPhase.THEN
+    then_command_submission_should_fail_after_timeout.invoke(context)

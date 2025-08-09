@@ -21,7 +21,7 @@ def invoke(ctx: ScenarioContext, expected_command_data: str) -> None:
     
     # Get the saved command from repository using the command_id from response
     command_id = ctx.submission_response.command_id
-    saved_command = asyncio.run(ctx.test_command_repository.find_command_by_id(command_id))
+    saved_command = asyncio.run(ctx.command_repository.find_command_by_id(command_id))
     
     assert saved_command is not None, f"Command {command_id} should be saved in repository but not found"
     

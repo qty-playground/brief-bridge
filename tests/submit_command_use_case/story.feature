@@ -1,7 +1,8 @@
 Feature: Submit Command Use Case
 
-  Scenario: Submit command to registered client successfully
-    Given client "test-client-001" is registered in system
+  Scenario: Submit command and wait for successful execution
+    Given client "test-client-001" is registered and online
+    And client will execute commands successfully
     When I submit command with:
       """
       {
@@ -16,7 +17,8 @@ Feature: Submit Command Use Case
       {
         "target_client_id": "test-client-001",
         "submission_successful": true,
-        "submission_message": "Command submitted successfully"
+        "submission_message": "Command executed successfully",
+        "result": "Hello from AI"
       }
       """
     And command should be saved in repository with:
@@ -25,32 +27,35 @@ Feature: Submit Command Use Case
         "target_client_id": "test-client-001",
         "content": "echo 'Hello from AI'",
         "type": "shell",
-        "status": "pending"
+        "status": "completed",
+        "result": "Hello from AI"
       }
       """
 
-  Scenario: Submit command with minimal information
-    Given client "minimal-client" is registered in system
+  Scenario: Submit command with timeout (no client response)
+    Given client "offline-client" is registered but offline
     When I submit command with:
       """
       {
-        "target_client_id": "minimal-client",
-        "command_content": "pwd"
+        "target_client_id": "offline-client",
+        "command_content": "echo 'test'",
+        "command_type": "shell"
       }
       """
-    Then command submission should be successful
+    Then command submission should fail after timeout
     And submission response should contain:
       """
       {
-        "target_client_id": "minimal-client",
-        "submission_successful": true
+        "target_client_id": "offline-client",
+        "submission_successful": false,
+        "submission_message": "Command execution timeout after 2.0 seconds"
       }
       """
     And command should be saved in repository with:
       """
       {
-        "target_client_id": "minimal-client",
-        "content": "pwd",
+        "target_client_id": "offline-client",
+        "content": "echo 'test'",
         "type": "shell",
         "status": "pending"
       }

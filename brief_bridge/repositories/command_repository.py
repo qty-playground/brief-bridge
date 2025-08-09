@@ -102,15 +102,10 @@ class FileBasedCommandRepository(CommandRepository):
     
     def _dict_to_command(self, command_data: dict) -> Command:
         """Convert dictionary to Command object"""
-        # Parse created_at if it exists
-        created_at = None
-        if command_data.get("created_at"):
-            try:
-                # Try parsing ISO format datetime string
-                created_at = datetime.fromisoformat(command_data["created_at"].replace('Z', '+00:00'))
-            except ValueError:
-                # Fallback to string format
-                created_at = command_data.get("created_at")
+        # Parse datetime fields if they exist
+        created_at = self._parse_datetime(command_data.get("created_at"))
+        started_at = self._parse_datetime(command_data.get("started_at"))
+        completed_at = self._parse_datetime(command_data.get("completed_at"))
         
         # Reconstruct Command object manually (since we need to preserve existing data)
         command = Command.create_new_command(
@@ -125,7 +120,24 @@ class FileBasedCommandRepository(CommandRepository):
         if created_at:
             command.created_at = created_at
         
+        # Set new fields
+        command.started_at = started_at
+        command.completed_at = completed_at
+        command.result = command_data.get("result")
+        command.error = command_data.get("error")
+        command.execution_time = command_data.get("execution_time")
+        
         return command
+    
+    def _parse_datetime(self, datetime_str) -> Optional[datetime]:
+        """Parse datetime string to datetime object"""
+        if not datetime_str:
+            return None
+        try:
+            # Try parsing ISO format datetime string
+            return datetime.fromisoformat(datetime_str.replace('Z', '+00:00'))
+        except (ValueError, AttributeError):
+            return None
     
     def _command_to_dict(self, command: Command) -> dict:
         """Convert Command object to dictionary"""
@@ -135,7 +147,12 @@ class FileBasedCommandRepository(CommandRepository):
             "content": command.content,
             "type": command.type,
             "status": command.status,
-            "created_at": command.created_at.isoformat() if command.created_at else None
+            "created_at": command.created_at.isoformat() if command.created_at else None,
+            "started_at": command.started_at.isoformat() if command.started_at else None,
+            "completed_at": command.completed_at.isoformat() if command.completed_at else None,
+            "result": command.result,
+            "error": command.error,
+            "execution_time": command.execution_time
         }
     
     async def save_command(self, command: Command) -> Command:
