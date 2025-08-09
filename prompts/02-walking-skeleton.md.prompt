@@ -83,11 +83,9 @@ def given_client_with_status_exists(context, client_id, status):
 @when(parsers.parse('I POST to "{endpoint}" with:'))
 def when_submit_request_to_api_endpoint(context, endpoint, docstring):
     """Delegate to when_submit_api_request step module"""
-    # Set WHEN phase and execution data before delegating
+    # Set WHEN phase and pass parameters directly to invoke()
     context.phase = BDDPhase.WHEN
-    context.endpoint = endpoint
-    context.request_body = docstring
-    when_submit_api_request.invoke(context)
+    when_submit_api_request.invoke(context, endpoint=endpoint, request_body=docstring)
 
 @then(parsers.parse('response status code should be {status_code:d}'))
 def then_api_response_has_expected_status(context, status_code):
@@ -175,15 +173,14 @@ if ARCHITECTURE_TYPE == "simplified":
 elif ARCHITECTURE_TYPE == "clean":
     from brief_bridge.application.use_cases.submit_command import SubmitCommandUseCase
 
-def invoke(ctx: ScenarioContext) -> None:
+def invoke(ctx: ScenarioContext, endpoint: str, request_body: str) -> None:
     """
-    Execute API request through infrastructure layer
+    Execute API request through infrastructure layer  
     Command Pattern implementation for BDD step
     """
     # Phase already set by wrapper function - ctx.phase = BDDPhase.WHEN
     # Can access input state from GIVEN phase, collect results here
-    endpoint = ctx.endpoint
-    request_body = ctx.request_body
+    # Additional parameters passed directly from step wrapper function
     
     # Both architectures use similar UseCase pattern
     # use_case = SubmitCommandUseCase(dependencies...)
@@ -298,11 +295,34 @@ Step module names should clearly describe business intent:
 
 ### Command Pattern Implementation
 Each step module:
-- Contains exactly ONE `invoke(ctx)` function
-- Follows Command Pattern semantics
+- Contains exactly ONE `invoke(ctx, *args, **kwargs)` function with flexible parameter support
+- Follows Command Pattern semantics  
 - Has business-descriptive docstring
 - Uses absolute imports only
 - Implements single responsibility
+
+**IMPORTANT: invoke() Parameter Flexibility**
+The `invoke()` function can accept additional parameters beyond just `ctx`:
+
+```python
+# Context only (simple steps)
+def invoke(ctx: ScenarioContext) -> None:
+
+# With docstring data (for multiline JSON/YAML steps)  
+def invoke(ctx: ScenarioContext, expected_response_body: str) -> None:
+
+# With multiple parsed parameters
+def invoke(ctx: ScenarioContext, client_id: str, status: str) -> None:
+
+# Mixed parameters (parsed + docstring)
+def invoke(ctx: ScenarioContext, endpoint: str, request_body: str) -> None:
+```
+
+**Benefits of Direct Parameter Passing:**
+- ✅ Cleaner than storing everything in context
+- ✅ Clear function signatures show what data is expected
+- ✅ Easier to test and debug
+- ✅ Follows standard function parameter conventions
 
 ## Completion Checklist
 - [ ] Feature directory created with step module structure

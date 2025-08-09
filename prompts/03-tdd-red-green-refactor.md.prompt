@@ -86,6 +86,21 @@ pytest -m wip  # Only run during development
 - ✅ **Production code**: Real classes, real methods, hardcoded returns
 - ❌ **Tests**: NO fake production logic - only call production APIs
 
+**Parameter Passing Patterns:**
+Use direct parameter passing to step modules instead of storing everything in context:
+
+```python
+# Step wrapper - pass docstring directly
+@when('I execute client registration with:')
+def when_execute_registration(context, docstring):
+    context.phase = BDDPhase.WHEN
+    when_step.invoke(context, request_body=docstring)  # ← Direct parameter
+
+# Step module - receive as parameter  
+def invoke(ctx: ScenarioContext, request_body: str) -> None:
+    data = json.loads(request_body)  # ← Use directly, no context storage needed
+```
+
 **Guidelines:**
 - Build production components as required by test scenario
 - Use the chosen `ARCHITECTURE_TYPE` from Phase 2 to determine import paths and patterns
@@ -116,11 +131,13 @@ class RegisterClientUseCase:
     async def execute(self, request) -> dict:
         return {"client_id": "hardcoded-uuid-123", "status": "ONLINE"}
 
-# Test step module: Only calls production code - NO fake logic
-def invoke(ctx: ScenarioContext) -> None:
+# Test step module: Only calls production code - NO fake logic  
+def invoke(ctx: ScenarioContext, request_body: str) -> None:
     from brief_bridge.use_cases.register_client import RegisterClientUseCase
+    import json
+    request_data = json.loads(request_body)
     use_case = RegisterClientUseCase(ctx.client_repository)
-    response = asyncio.run(use_case.execute(ctx.request))
+    response = asyncio.run(use_case.execute(request_data))
     ctx.created_client_id = response["client_id"]
 ```
 
@@ -144,10 +161,12 @@ class RegisterClientUseCase:
         return RegisterClientResponse(client_id="hardcoded-uuid-123", status=ClientStatus.ONLINE)
 
 # Test step module: Only calls production code - NO fake logic
-def invoke(ctx: ScenarioContext) -> None:
+def invoke(ctx: ScenarioContext, request_body: str) -> None:
     from brief_bridge.application.use_cases.register_client import RegisterClientUseCase
+    import json
+    request_data = json.loads(request_body)
     use_case = RegisterClientUseCase(ctx.client_repository)
-    response = asyncio.run(use_case.execute(ctx.request))
+    response = asyncio.run(use_case.execute(request_data))
     ctx.created_client_id = response.client_id
 ```
 
