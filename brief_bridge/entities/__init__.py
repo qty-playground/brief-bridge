@@ -1,0 +1,1 @@
+"""Brief Bridge Entities"""
