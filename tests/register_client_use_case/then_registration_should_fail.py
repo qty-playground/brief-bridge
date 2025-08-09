@@ -9,5 +9,5 @@ def invoke(ctx: ScenarioContext) -> None:
     # Phase already set by wrapper function - ctx.phase = BDDPhase.THEN
     # Read-only access to all state for assertions
     
-    # GREEN Stage 1: Hardcoded fake implementation
-    raise NotImplementedError("Registration failure verification not implemented")
+    # GREEN Stage 1: Simple assertion on production response
+    assert ctx.registration_response.registration_successful is False, f"Registration should fail, but got: {ctx.registration_response.registration_successful}"

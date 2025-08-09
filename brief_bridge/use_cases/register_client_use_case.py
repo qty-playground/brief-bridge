@@ -25,6 +25,16 @@ class RegisterClientUseCase:
     
     async def execute_client_registration(self, request: ClientRegistrationRequest) -> ClientRegistrationResponse:
         """Business rule: client.registration - register new client in system"""
+        # Business rule: client.validation - client_id cannot be empty
+        if not request.client_id or request.client_id.strip() == "":
+            return ClientRegistrationResponse(
+                client_id="",
+                client_name=request.client_name,
+                client_status="",
+                registration_successful=False,
+                registration_message="Client ID cannot be empty"
+            )
+        
         client: Client = Client.register_new_client(
             client_id=request.client_id,
             name=request.client_name

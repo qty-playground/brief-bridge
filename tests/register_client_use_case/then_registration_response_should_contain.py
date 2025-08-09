@@ -13,11 +13,17 @@ def invoke(ctx: ScenarioContext, expected_response_body: str) -> None:
     # Parse expected data directly from parameter - much cleaner!
     expected_response = json.loads(expected_response_body)
     
-    # GREEN Stage 1: Simple validation with production response
+    # GREEN Stage 1: Simple validation with production response - only check expected fields
     actual_response = ctx.registration_response
-    assert actual_response.client_id == expected_response["client_id"], f"Expected client_id {expected_response['client_id']}, got {actual_response.client_id}"
-    assert actual_response.client_name == expected_response["client_name"], f"Expected client_name {expected_response['client_name']}, got {actual_response.client_name}"
-    assert actual_response.client_status == expected_response["client_status"], f"Expected client_status {expected_response['client_status']}, got {actual_response.client_status}"
-    assert actual_response.registration_successful == expected_response["registration_successful"], f"Expected registration_successful {expected_response['registration_successful']}, got {actual_response.registration_successful}"
+    
+    # Only assert fields that are specified in the expected response
+    if "client_id" in expected_response:
+        assert actual_response.client_id == expected_response["client_id"], f"Expected client_id {expected_response['client_id']}, got {actual_response.client_id}"
+    if "client_name" in expected_response:
+        assert actual_response.client_name == expected_response["client_name"], f"Expected client_name {expected_response['client_name']}, got {actual_response.client_name}"
+    if "client_status" in expected_response:
+        assert actual_response.client_status == expected_response["client_status"], f"Expected client_status {expected_response['client_status']}, got {actual_response.client_status}"
+    if "registration_successful" in expected_response:
+        assert actual_response.registration_successful == expected_response["registration_successful"], f"Expected registration_successful {expected_response['registration_successful']}, got {actual_response.registration_successful}"
     if "registration_message" in expected_response:
         assert actual_response.registration_message == expected_response["registration_message"], f"Expected registration_message {expected_response['registration_message']}, got {actual_response.registration_message}"

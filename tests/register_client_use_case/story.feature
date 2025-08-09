@@ -29,7 +29,6 @@ Feature: Register Client Use Case
       }
       """
 
-  @skip
   Scenario: Register client with minimal information
     Given no client exists with id "minimal-client"
     When I execute client registration with:
@@ -99,7 +98,6 @@ Feature: Register Client Use Case
 #      }
 #      """
 
-  @skip
   Scenario: Register client with empty client_id
     Given no preconditions
     When I execute client registration with:
