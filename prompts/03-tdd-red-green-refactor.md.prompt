@@ -98,7 +98,7 @@ class RegisterClientUseCase:
         return {"client_id": "hardcoded-uuid-123", "status": "ONLINE"}
 
 # Test: Only calls production code - NO fake logic
-def invoke(ctx: TestContext) -> None:
+def invoke(ctx: ScenarioContext) -> None:
     use_case = RegisterClientUseCase()
     response = asyncio.run(use_case.execute(ctx.request))
     ctx.created_client_id = response["client_id"]
