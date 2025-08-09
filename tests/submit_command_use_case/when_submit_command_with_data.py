@@ -25,5 +25,16 @@ def invoke(ctx: ScenarioContext, command_data: str) -> None:
         command_type=request_data.get("command_type", "shell")
     )
     
-    # GREEN Stage 1: Hardcoded fake implementation
-    raise NotImplementedError("Command submission use case execution not implemented")
+    # GREEN Stage 1: Real production invoke chain with repositories
+    from brief_bridge.repositories.command_repository import InMemoryCommandRepository
+    
+    # Get client repository from GIVEN phase
+    client_repository = ctx.test_client_repository
+    command_repository = InMemoryCommandRepository()
+    
+    # Create and execute use case
+    use_case = SubmitCommandUseCase(client_repository, command_repository)
+    ctx.submission_response = asyncio.run(use_case.execute_command_submission(submission_request))
+    
+    # Store repositories for verification in THEN phase
+    ctx.test_command_repository = command_repository

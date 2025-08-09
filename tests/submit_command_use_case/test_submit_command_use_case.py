@@ -6,7 +6,7 @@ from conftest import BDDPhase
 from . import given_client_is_registered_in_system
 from . import given_no_client_exists_with_id
 from . import given_no_preconditions
-from . import when_submit_command_with_data
+from . import when_submit_command_with_data as when_submit_command_module
 from . import then_command_submission_should_be_successful
 from . import then_command_submission_should_fail
 from . import then_submission_response_should_contain
@@ -43,7 +43,7 @@ def when_submit_command_with_data(context, docstring):
     """Delegate to when_submit_command_with_data step module"""
     # Set WHEN phase and pass docstring directly to invoke()
     context.phase = BDDPhase.WHEN
-    when_submit_command_with_data.invoke(context, command_data=docstring)
+    when_submit_command_module.invoke(context, command_data=docstring)
 
 @then('command submission should be successful')
 def then_command_submission_was_successful(context):

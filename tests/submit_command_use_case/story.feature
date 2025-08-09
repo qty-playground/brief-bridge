@@ -1,6 +1,5 @@
 Feature: Submit Command Use Case
 
-  @skip
   Scenario: Submit command to registered client successfully
     Given client "test-client-001" is registered in system
     When I submit command with:
