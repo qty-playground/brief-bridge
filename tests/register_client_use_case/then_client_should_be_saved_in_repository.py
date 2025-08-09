@@ -6,7 +6,7 @@ from conftest import ScenarioContext, BDDPhase
 # Simplified Architecture imports
 from brief_bridge.repositories.client_repository import ClientRepository
 
-def invoke(ctx: ScenarioContext) -> None:
+def invoke(ctx: ScenarioContext, expected_client_data: str) -> None:
     """
     Verify client was properly saved in repository
     Command Pattern implementation for BDD step
@@ -14,16 +14,9 @@ def invoke(ctx: ScenarioContext) -> None:
     # Phase already set by wrapper function - ctx.phase = BDDPhase.THEN
     # Read-only access to all state for assertions
     
-    expected_client_data = _get_expected_client_data(ctx)
-    saved_client = _get_saved_client_from_repository(ctx, expected_client_data["client_id"])
-    _verify_client_attributes_match(saved_client, expected_client_data)
-
-def _get_expected_client_data(ctx: ScenarioContext) -> dict:
-    """Extract and parse expected client data from cross-phase storage"""
-    expected_client_data_str = ctx.get_cross_phase_data('expected_client_data')
-    if not expected_client_data_str:
-        raise ValueError("Expected client data not provided")
-    return json.loads(expected_client_data_str)
+    parsed_expected_data = json.loads(expected_client_data)
+    saved_client = _get_saved_client_from_repository(ctx, parsed_expected_data["client_id"])
+    _verify_client_attributes_match(saved_client, parsed_expected_data)
 
 def _get_saved_client_from_repository(ctx: ScenarioContext, client_id: str):
     """Retrieve saved client from repository and verify existence"""

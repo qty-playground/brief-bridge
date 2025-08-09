@@ -2,7 +2,7 @@
 from conftest import ScenarioContext, BDDPhase
 import json
 
-def invoke(ctx: ScenarioContext) -> None:
+def invoke(ctx: ScenarioContext, expected_response_body: str) -> None:
     """
     Verify registration response contains expected data
     Command Pattern implementation for BDD step
@@ -10,12 +10,8 @@ def invoke(ctx: ScenarioContext) -> None:
     # Phase already set by wrapper function - ctx.phase = BDDPhase.THEN
     # Read-only access to all state for assertions
     
-    # Get expected data from cross-phase storage
-    response_body = ctx.get_cross_phase_data('expected_response_body')
-    if not response_body:
-        raise ValueError("Expected response body not provided")
-    
-    expected_response = json.loads(response_body)
+    # Parse expected data directly from parameter - much cleaner!
+    expected_response = json.loads(expected_response_body)
     
     # GREEN Stage 1: Simple validation with production response
     actual_response = ctx.registration_response

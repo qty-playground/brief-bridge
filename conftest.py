@@ -44,7 +44,6 @@ class ScenarioContext:
         object.__setattr__(self, '_input_state', {})
         object.__setattr__(self, '_results', {})
         object.__setattr__(self, '_phase_locked', False)
-        object.__setattr__(self, '_cross_phase_data', {})
     
     @property
     def phase(self) -> BDDPhase:
@@ -156,19 +155,10 @@ class ScenarioContext:
         """Get all results collected during WHEN phase"""  
         return self._results.copy()
     
-    def set_cross_phase_data(self, name: str, value: Any) -> None:
-        """Set data that can be accessed across all BDD phases"""
-        self._cross_phase_data[name] = value
-    
-    def get_cross_phase_data(self, name: str, default: Any = None) -> Any:
-        """Get cross-phase data that persists across all BDD phases"""
-        return self._cross_phase_data.get(name, default)
-    
     def clear_state(self) -> None:
         """Clear all state - use with caution, mainly for testing"""
         object.__setattr__(self, '_input_state', {})
         object.__setattr__(self, '_results', {})
-        object.__setattr__(self, '_cross_phase_data', {})
         # Clear dynamic attributes (skip built-in properties)
         attrs_to_remove = [attr for attr in dir(self) 
                           if not attr.startswith('_') 
