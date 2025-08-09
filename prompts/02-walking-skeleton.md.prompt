@@ -47,9 +47,10 @@ tests/{feature}/
 **File:** `tests/{feature}/test_{feature}.py` (Only contains step wrappers)
 ```python
 from pytest_bdd import scenarios, given, when, then, parsers
-from tests.{feature} import given_create_client_with_status
-from tests.{feature} import when_submit_api_request  
-from tests.{feature} import then_verify_response_status
+from conftest import BDDPhase
+from . import given_create_client_with_status
+from . import when_submit_api_request  
+from . import then_verify_response_status
 
 # Load all scenarios from feature file
 scenarios('story.feature')
@@ -58,6 +59,8 @@ scenarios('story.feature')
 @given(parsers.parse('client "{client_id}" exists with status "{status}"'))
 def given_client_with_status_exists(context, client_id, status):
     """Delegate to given_create_client_with_status step module"""
+    # Set GIVEN phase and input state before delegating
+    context.phase = BDDPhase.GIVEN
     context.client_id = client_id
     context.status = status
     given_create_client_with_status.invoke(context)
@@ -65,6 +68,8 @@ def given_client_with_status_exists(context, client_id, status):
 @when(parsers.parse('I POST to "{endpoint}" with:'))
 def when_submit_request_to_api_endpoint(context, endpoint, docstring):
     """Delegate to when_submit_api_request step module"""
+    # Set WHEN phase and execution data before delegating
+    context.phase = BDDPhase.WHEN
     context.endpoint = endpoint
     context.request_body = docstring
     when_submit_api_request.invoke(context)
@@ -72,11 +77,39 @@ def when_submit_request_to_api_endpoint(context, endpoint, docstring):
 @then(parsers.parse('response status code should be {status_code:d}'))
 def then_api_response_has_expected_status(context, status_code):
     """Delegate to then_verify_response_status step module"""
+    # Set THEN phase and verification data before delegating
+    context.phase = BDDPhase.THEN
     context.expected_status_code = status_code
     then_verify_response_status.invoke(context)
 ```
 
 **Note:** The `context` fixture is now provided by root `conftest.py` with `ScenarioContext` class.
+
+### ScenarioContext Phase Management
+
+**CRITICAL:** All step modules MUST set the correct BDD phase at the beginning of their `invoke` function:
+
+- **GIVEN steps**: `ctx.phase = BDDPhase.GIVEN`
+- **WHEN steps**: `ctx.phase = BDDPhase.WHEN`  
+- **THEN steps**: `ctx.phase = BDDPhase.THEN`
+
+**Phase Rules:**
+- GIVEN: Can set input state and test data
+- WHEN: Can collect execution results, cannot modify input state
+- THEN: Read-only access for assertions
+- Phase transitions only allow upgrades: GIVEN → WHEN → THEN (no downgrades)
+
+**Step wrapper functions should set context attributes in GIVEN phase:**
+```python
+@given(parsers.parse('client "{client_id}" exists with status "{status}"'))
+def given_client_with_status_exists(context, client_id, status):
+    """Delegate to given_create_client_with_status step module"""
+    # Set input state in GIVEN phase (before calling invoke)
+    context.phase = BDDPhase.GIVEN
+    context.client_id = client_id
+    context.status = status
+    given_create_client_with_status.invoke(context)
+```
 
 ### Step 4: Implement Individual Step Modules
 
@@ -85,7 +118,7 @@ Each step module contains exactly ONE `invoke` function following Command Patter
 **File:** `tests/{feature}/given_create_client_with_status.py`
 ```python
 """Given client exists with status - Screaming Architecture naming"""
-from conftest import ScenarioContext
+from conftest import ScenarioContext, BDDPhase
 from brief_bridge.domain.entities.client import Client
 from brief_bridge.domain.value_objects.client_id import ClientId
 from brief_bridge.domain.value_objects.client_status import ClientStatus
@@ -95,7 +128,10 @@ def invoke(ctx: ScenarioContext) -> None:
     Business rule: client.registration - create test client with specific status
     Command Pattern implementation for BDD step
     """
+    # Phase already set by wrapper function - ctx.phase = BDDPhase.GIVEN
+    # Can access input state set in GIVEN phase
     client_id = ClientId(ctx.client_id)
+    
     # GREEN Stage 1: Hardcoded fake implementation
     raise NotImplementedError("Client creation with status not implemented")
 ```
@@ -103,7 +139,7 @@ def invoke(ctx: ScenarioContext) -> None:
 **File:** `tests/{feature}/when_submit_api_request.py`
 ```python
 """When I POST to endpoint - Screaming Architecture naming"""
-from conftest import ScenarioContext
+from conftest import ScenarioContext, BDDPhase
 from brief_bridge.infrastructure.fastapi.main import app
 import json
 
@@ -112,6 +148,11 @@ def invoke(ctx: ScenarioContext) -> None:
     Execute API request through infrastructure layer
     Command Pattern implementation for BDD step
     """
+    # Phase already set by wrapper function - ctx.phase = BDDPhase.WHEN
+    # Can access input state from GIVEN phase, collect results here
+    endpoint = ctx.endpoint
+    request_body = ctx.request_body
+    
     # GREEN Stage 1: Hardcoded fake implementation
     raise NotImplementedError("API request execution not implemented")
 ```
@@ -119,13 +160,17 @@ def invoke(ctx: ScenarioContext) -> None:
 **File:** `tests/{feature}/then_verify_response_status.py`
 ```python
 """Then response status code verification - Screaming Architecture naming"""
-from conftest import ScenarioContext
+from conftest import ScenarioContext, BDDPhase
 
 def invoke(ctx: ScenarioContext) -> None:
     """
     Verify API response follows expected contract
     Command Pattern implementation for BDD step
     """
+    # Phase already set by wrapper function - ctx.phase = BDDPhase.THEN
+    # Read-only access to all state for assertions
+    expected_code = ctx.expected_status_code
+    
     # GREEN Stage 1: Hardcoded fake implementation
     raise NotImplementedError("Response status verification not implemented")
 ```
@@ -229,7 +274,9 @@ Each step module:
 - [ ] Root `conftest.py` contains `ScenarioContext` class and `context` fixture
 - [ ] Individual step modules created with given_, when_, then_ prefixes
 - [ ] Each step module has exactly ONE `invoke(ctx: ScenarioContext) -> None` function
-- [ ] All step modules import `ScenarioContext` from conftest
+- [ ] All step modules import `ScenarioContext` and `BDDPhase` from conftest
+- [ ] **CRITICAL**: Step wrappers set correct phase before delegation (`ctx.phase = BDDPhase.GIVEN/WHEN/THEN`)
+- [ ] **CRITICAL**: Step modules use phase-appropriate state access (GIVEN: input, WHEN: results, THEN: read-only)
 - [ ] All step modules use Screaming Architecture naming
 - [ ] Step wrapper uses `parsers.parse()` for parameter extraction
 - [ ] Step wrappers handle `docstring` and `datatable` parameters correctly
