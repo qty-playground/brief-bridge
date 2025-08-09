@@ -31,5 +31,4 @@ def get_submit_command_use_case(
     command_repository: CommandRepository = Depends(get_command_repository)
 ) -> SubmitCommandUseCase:
     """FastAPI dependency: Submit command use case with repository injection"""
-    return SubmitCommandUseCase(client_repository, command_repository)# Force reload
-# Force reload test
+    return SubmitCommandUseCase(client_repository, command_repository)
