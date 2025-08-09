@@ -117,3 +117,45 @@ Feature: Submit Command Use Case
       }
       """
     And no command should be saved in repository
+
+  Scenario: Multiple clients with isolated command execution
+    Given client "client-A" is registered and online
+    And client "client-B" is registered and online
+    And client "client-A" will execute commands successfully with delay 1 second
+    And client "client-B" will execute commands successfully with delay 2 seconds
+    When I submit commands to both clients:
+      """
+      [
+        {
+          "target_client_id": "client-A",
+          "command_content": "echo 'A result'",
+          "command_type": "shell"
+        },
+        {
+          "target_client_id": "client-B", 
+          "command_content": "echo 'B result'",
+          "command_type": "shell"
+        }
+      ]
+      """
+    Then both commands should execute independently
+    And first command response should contain:
+      """
+      {
+        "target_client_id": "client-A",
+        "submission_successful": true,
+        "submission_message": "Command executed successfully",
+        "result": "A result"
+      }
+      """
+    And second command response should contain:
+      """
+      {
+        "target_client_id": "client-B",
+        "submission_successful": true,
+        "submission_message": "Command executed successfully", 
+        "result": "B result"
+      }
+      """
+    And client "client-A" should have only their command in repository
+    And client "client-B" should have only their command in repository

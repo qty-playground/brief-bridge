@@ -146,6 +146,27 @@ And submission response should contain:
 And no command should be saved in repository
 ```
 
+### Scenario: Multiple clients with isolated command execution
+```
+Given client "client-A" is registered and online
+And client "client-B" is registered and online  
+And client "client-A" will execute commands successfully with delay 1 second
+And client "client-B" will execute commands successfully with delay 2 seconds
+When I submit command to "client-A" with content "echo 'A result'"
+And I submit command to "client-B" with content "echo 'B result'" 
+Then both commands should execute independently
+And "client-A" command should complete with result "A result" 
+And "client-B" command should complete with result "B result"
+And commands should not interfere with each other's execution
+And each client should only see their own commands
+```
+
+**Business Rules for Multi-Client Isolation:**
+- **command.client_isolation**: Commands are isolated by target_client_id
+- **command.parallel_execution**: Multiple clients can execute commands simultaneously  
+- **command.no_interference**: One client's command execution doesn't affect another's
+- **command.client_filtering**: Each client only receives their assigned commands
+
 ## Notes
 - This use case now handles both command submission AND result waiting
 - AI assistants get synchronous response with execution results
