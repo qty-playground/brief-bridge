@@ -20,7 +20,16 @@ def invoke(ctx: ScenarioContext) -> None:
     
     expected_client_data = json.loads(expected_client_data_str)
     
-    # GREEN Stage 1: Simple hardcoded validation - assume client was saved correctly
-    # In this stage, we just verify the structure of expected data is valid
-    assert "client_id" in expected_client_data, "Expected client data must contain client_id"
-    assert expected_client_data["client_id"], "client_id must not be empty"
+    # GREEN Stage 2: Real business rule verification - client.registration 
+    # Business rule: registered client should be saved with correct attributes
+    client_id = expected_client_data["client_id"]
+    
+    # Verify client exists in repository
+    import asyncio
+    saved_client = asyncio.run(ctx.test_repository.find_client_by_id(client_id))
+    assert saved_client is not None, f"Client {client_id} should be saved in repository but not found"
+    
+    # Verify saved client matches expected attributes
+    assert saved_client.client_id == expected_client_data["client_id"], f"Expected client_id {expected_client_data['client_id']}, got {saved_client.client_id}"
+    assert saved_client.name == expected_client_data["name"], f"Expected name {expected_client_data['name']}, got {saved_client.name}"
+    assert saved_client.status == expected_client_data["status"], f"Expected status {expected_client_data['status']}, got {saved_client.status}"

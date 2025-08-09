@@ -23,7 +23,10 @@ def invoke(ctx: ScenarioContext) -> None:
         client_name=request_data.get("client_name")
     )
     
-    # GREEN Stage 1: Real production invoke chain with hardcoded repository
+    # GREEN Stage 2: Real production invoke chain with repository accessible for verification
     repository = InMemoryClientRepository()
     use_case = RegisterClientUseCase(repository)
     ctx.registration_response = asyncio.run(use_case.execute_client_registration(registration_request))
+    
+    # Store repository for later verification in THEN steps
+    ctx.test_repository = repository
