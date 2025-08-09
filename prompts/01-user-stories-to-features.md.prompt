@@ -55,6 +55,53 @@ Feature: {Human Readable Feature Name}
 - **Mark ALL scenarios with @skip initially**
 - Maintain exact API specifications and error codes
 
+**BDD Phase Semantic Rules (CRITICAL):**
+- **GIVEN steps**: Setup and input state only
+  - ✅ "Given client exists with status"
+  - ✅ "Given user is authenticated"
+  - ❌ "Given response status is 200" (this is result, not input)
+
+- **WHEN steps**: Actions and execution only
+  - ✅ "When I POST to endpoint"
+  - ✅ "When system processes command"
+  - ❌ "When client status should be ONLINE" (this is assertion, not action)
+
+- **THEN steps**: Assertions and verification only
+  - ✅ "Then response status code should be 201"
+  - ✅ "Then client should be marked as BUSY"
+  - ❌ "Then I send another request" (this is action, not assertion)
+
+**Phase Order Validation:**
+- Scenarios MUST follow Given → When → Then sequence
+- No phase downgrades (e.g. Then → Given) within same scenario
+- Multiple Given/When/Then steps are allowed within their phase
+
+**Common Phase Semantic Violations to Avoid:**
+```gherkin
+# ❌ BAD: Assertion in GIVEN phase
+Given response should return 200 status code
+# ✅ GOOD: Setup in GIVEN phase  
+Given client exists with status "ONLINE"
+
+# ❌ BAD: Action in THEN phase
+Then I submit another POST request
+# ✅ GOOD: Assertion in THEN phase
+Then response status code should be 201
+
+# ❌ BAD: Phase downgrade
+Given client exists
+When I POST to "/api"  
+Then response is 201
+Given another client exists  # ❌ Cannot go back to GIVEN
+
+# ✅ GOOD: Proper phase progression
+Given client exists
+And another client exists with status "IDLE"  # Multiple GIVEN steps OK
+When I POST to "/api"
+Then response status code should be 201
+And response body should contain client data  # Multiple THEN steps OK
+```
+
 ### Step 4: Validation
 
 Verify the created feature file:
@@ -64,6 +111,13 @@ Verify the created feature file:
 - [ ] Gherkin syntax is valid
 - [ ] JSON payloads properly formatted in docstrings
 - [ ] Directory name is valid Python module
+- [ ] **CRITICAL**: BDD phase semantics are correct:
+  - [ ] GIVEN steps only contain setup/input state
+  - [ ] WHEN steps only contain actions/execution
+  - [ ] THEN steps only contain assertions/verification
+  - [ ] No phase semantic violations (e.g. assertions in GIVEN)
+- [ ] **CRITICAL**: Phase order follows Given → When → Then sequence
+- [ ] **CRITICAL**: No phase downgrades within scenarios
 
 ## Example Output
 
@@ -121,6 +175,9 @@ Feature: Submit Command
 - [ ] All scenarios marked with @skip
 - [ ] Gherkin syntax validated
 - [ ] JSON payloads properly formatted
+- [ ] **CRITICAL**: BDD phase semantics validated
+- [ ] **CRITICAL**: Phase order sequence validated (Given → When → Then)
+- [ ] **CRITICAL**: No semantic violations in step classifications
 
 ## AI Assistant Behavior Guidelines
 
@@ -149,6 +206,8 @@ When you complete the feature file creation, you MUST:
 - ✅ All scenarios from user story converted to Gherkin
 - ✅ JSON payloads properly formatted in docstrings
 - ✅ Gherkin syntax validated
+- ✅ **BDD phase semantics validated** (Given=setup, When=action, Then=assertion)
+- ✅ **Phase order sequence validated** (Given → When → Then flow)
 ```
 
 3. **Always validate** the created feature file for syntax errors before proceeding
