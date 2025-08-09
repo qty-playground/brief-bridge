@@ -1,5 +1,20 @@
 # Phase 2: Create Testing Walking Skeleton
 
+## Architecture Selection
+Choose your implementation architecture:
+
+### 🚀 **SIMPLIFIED ARCHITECTURE** (Default - Recommended)
+- **Pattern**: `Framework ↔ UseCase ↔ Entity/Repository`
+- **Best for**: Most projects, rapid development, learning BDD
+- **Set**: `ARCHITECTURE_TYPE = "simplified"`
+
+### 🏛️ **CLEAN ARCHITECTURE** (Complex Projects)  
+- **Pattern**: `Domain → Application → Infrastructure` layers
+- **Best for**: Complex business logic, long-term strategic systems
+- **Set**: `ARCHITECTURE_TYPE = "clean"`
+
+---
+
 ## Objective
 Build pytest-bdd infrastructure without real implementation - create the testing framework shell with NotImplementedError stubs.
 
@@ -119,9 +134,14 @@ Each step module contains exactly ONE `invoke` function following Command Patter
 ```python
 """Given client exists with status - Screaming Architecture naming"""
 from conftest import ScenarioContext, BDDPhase
-from brief_bridge.domain.entities.client import Client
-from brief_bridge.domain.value_objects.client_id import ClientId
-from brief_bridge.domain.value_objects.client_status import ClientStatus
+
+# Architecture-specific imports
+if ARCHITECTURE_TYPE == "simplified":
+    from brief_bridge.entities.client import Client
+elif ARCHITECTURE_TYPE == "clean":
+    from brief_bridge.domain.entities.client import Client
+    from brief_bridge.domain.value_objects.client_id import ClientId
+    from brief_bridge.domain.value_objects.client_status import ClientStatus
 
 def invoke(ctx: ScenarioContext) -> None:
     """
@@ -130,7 +150,14 @@ def invoke(ctx: ScenarioContext) -> None:
     """
     # Phase already set by wrapper function - ctx.phase = BDDPhase.GIVEN
     # Can access input state set in GIVEN phase
-    client_id = ClientId(ctx.client_id)
+    
+    if ARCHITECTURE_TYPE == "simplified":
+        # Simple approach: direct entity usage
+        client = Client(ctx.client_id, {"status": ctx.status})
+    elif ARCHITECTURE_TYPE == "clean":
+        # Clean Architecture: proper value objects
+        client_id = ClientId(ctx.client_id)
+        client = Client(client_id, ClientStatus(ctx.status))
     
     # GREEN Stage 1: Hardcoded fake implementation
     raise NotImplementedError("Client creation with status not implemented")
@@ -140,8 +167,13 @@ def invoke(ctx: ScenarioContext) -> None:
 ```python
 """When I POST to endpoint - Screaming Architecture naming"""
 from conftest import ScenarioContext, BDDPhase
-from brief_bridge.infrastructure.fastapi.main import app
 import json
+
+# Architecture-specific imports
+if ARCHITECTURE_TYPE == "simplified":
+    from brief_bridge.use_cases.submit_command import SubmitCommandUseCase
+elif ARCHITECTURE_TYPE == "clean":
+    from brief_bridge.application.use_cases.submit_command import SubmitCommandUseCase
 
 def invoke(ctx: ScenarioContext) -> None:
     """
@@ -152,6 +184,10 @@ def invoke(ctx: ScenarioContext) -> None:
     # Can access input state from GIVEN phase, collect results here
     endpoint = ctx.endpoint
     request_body = ctx.request_body
+    
+    # Both architectures use similar UseCase pattern
+    # use_case = SubmitCommandUseCase(dependencies...)
+    # ctx.api_response = await use_case.execute(request_data)
     
     # GREEN Stage 1: Hardcoded fake implementation
     raise NotImplementedError("API request execution not implemented")

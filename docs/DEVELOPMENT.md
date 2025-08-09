@@ -2,7 +2,7 @@
 
 ## Overview
 
-Brief Bridge is a lightweight tool that enables AI coding assistants to execute commands on remote clients through HTTP polling. This guide covers the complete development approach using BDD (Behavior-Driven Development), Clean Architecture, and Test-Driven Development.
+Brief Bridge is a lightweight tool that enables AI coding assistants to execute commands on remote clients through HTTP polling. This guide covers the complete development approach using BDD (Behavior-Driven Development), simplified architecture (Framework ↔ UseCase ↔ Entity/Repository), and Test-Driven Development.
 
 ## Project Structure
 

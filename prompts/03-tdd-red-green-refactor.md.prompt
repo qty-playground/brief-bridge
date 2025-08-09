@@ -1,7 +1,15 @@
 # Phase 3: TDD RED-GREEN-REFACTOR Cycle
 
+## Architecture Selection
+Use the same `ARCHITECTURE_TYPE` from Phase 2:
+
+### 🚀 **SIMPLIFIED ARCHITECTURE**: `Framework ↔ UseCase ↔ Entity/Repository`
+### 🏛️ **CLEAN ARCHITECTURE**: `Domain → Application → Infrastructure` layers
+
+---
+
 ## Objective
-Implement production code using Test-Driven Development methodology with Clean Architecture, focusing on ONE scenario at a time.
+Implement production code using Test-Driven Development methodology with your chosen architecture, focusing on ONE scenario at a time.
 
 ## Prerequisites
 - Feature file exists with @skip scenarios
@@ -80,28 +88,67 @@ pytest -m wip  # Only run during development
 
 **Guidelines:**
 - Build production components as required by test scenario
-- Follow your project's existing architectural patterns 
+- Use the chosen `ARCHITECTURE_TYPE` from Phase 2 to determine import paths and patterns
+- Follow your project's chosen architectural approach (simplified or clean)
 - Every component has REAL classes with REAL methods
 - Methods return hardcoded values (e.g. `return "hardcoded-uuid"`)
 - Tests only contain test setup and call production code
 - Goal: Complete production flow that makes test pass with minimal implementation
 
-**Example:**
+**Architecture-Specific Examples:**
+
+### 🚀 Simplified Architecture - GREEN Stage 1
 ```python
-# Production: REAL classes with hardcoded returns
+# brief_bridge/entities/client.py - REAL class with hardcoded returns
 class Client:
+    def __init__(self, client_id: str, client_info: dict):
+        self.client_id = client_id
+        self.client_info = client_info
+        
     def get_status(self) -> str:
         return "ONLINE"  # Hardcoded for Stage 1
 
+# brief_bridge/use_cases/register_client.py - REAL use case
 class RegisterClientUseCase:
+    def __init__(self, client_repository):
+        self.client_repository = client_repository
+        
     async def execute(self, request) -> dict:
         return {"client_id": "hardcoded-uuid-123", "status": "ONLINE"}
 
-# Test: Only calls production code - NO fake logic
+# Test step module: Only calls production code - NO fake logic
 def invoke(ctx: ScenarioContext) -> None:
-    use_case = RegisterClientUseCase()
+    from brief_bridge.use_cases.register_client import RegisterClientUseCase
+    use_case = RegisterClientUseCase(ctx.client_repository)
     response = asyncio.run(use_case.execute(ctx.request))
     ctx.created_client_id = response["client_id"]
+```
+
+### 🏛️ Clean Architecture - GREEN Stage 1  
+```python
+# brief_bridge/domain/entities/client.py - REAL entity with hardcoded returns
+class Client:
+    def __init__(self, client_id: ClientId, client_info: ClientInfo):
+        self._client_id = client_id
+        self._client_info = client_info
+        
+    def get_status(self) -> ClientStatus:
+        return ClientStatus.ONLINE  # Hardcoded for Stage 1
+
+# brief_bridge/application/use_cases/register_client.py - REAL use case
+class RegisterClientUseCase:
+    def __init__(self, client_repo: ClientRepository):
+        self._client_repo = client_repo
+        
+    async def execute(self, request: RegisterClientRequest) -> RegisterClientResponse:
+        return RegisterClientResponse(client_id="hardcoded-uuid-123", status=ClientStatus.ONLINE)
+
+# Test step module: Only calls production code - NO fake logic
+def invoke(ctx: ScenarioContext) -> None:
+    from brief_bridge.application.use_cases.register_client import RegisterClientUseCase
+    use_case = RegisterClientUseCase(ctx.client_repository)
+    response = asyncio.run(use_case.execute(ctx.request))
+    ctx.created_client_id = response.client_id
 ```
 
 **Stage 1 Validation:**
@@ -127,9 +174,48 @@ pytest -m wip  # Should PASS
 2. Implement those rules in appropriate domain entities/services
 3. Update step definitions to use real domain logic
 
-**Example Implementation:**
+**Architecture-Specific Examples:**
+
+### 🚀 Simplified Architecture - GREEN Stage 2
 ```python
-# brief_bridge/domain/entities/client.py (enhanced)
+# brief_bridge/entities/client.py (enhanced with real business logic)
+class Client:
+    def __init__(self, client_id: str, client_info: dict):
+        self.client_id = client_id
+        self.client_info = client_info
+        self.status = "ONLINE"  # Business rule: client.registration
+        self.availability = "IDLE"
+        self.last_heartbeat = datetime.now(timezone.utc)
+    
+    def mark_online(self):
+        # Business rule: client.heartbeat
+        self.status = "ONLINE"
+        self.last_heartbeat = datetime.now(timezone.utc)
+    
+    def mark_offline(self):
+        self.status = "OFFLINE"
+        self.availability = "IDLE"
+
+# tests/{feature}/given_create_client_with_status.py (updated)
+def invoke(ctx: ScenarioContext) -> None:
+    from brief_bridge.entities.client import Client
+    
+    # Now with proper business rule implementation
+    client_info = {"os": "Linux", "architecture": "x86_64", "version": "Ubuntu 20.04"}
+    client = Client(ctx.client_id, client_info)
+    
+    # Business rule: client status management
+    if ctx.status == "ONLINE":
+        client.mark_online()
+    elif ctx.status == "OFFLINE":
+        client.mark_offline()
+    
+    asyncio.run(ctx.client_repository.save(client))
+```
+
+### 🏛️ Clean Architecture - GREEN Stage 2
+```python
+# brief_bridge/domain/entities/client.py (enhanced with real business logic)
 class Client:
     def __init__(self, client_id: ClientId, client_info: ClientInfo):
         self._client_id = client_id
@@ -148,19 +234,22 @@ class Client:
         self._availability = ClientAvailability.IDLE
 
 # tests/{feature}/given_create_client_with_status.py (updated)
-@given('client "{client_id}" exists with status "{status}" and availability "{availability}"')
-def given_client_exists(client_id, status, availability, client_repository):
+def invoke(ctx: ScenarioContext) -> None:
+    from brief_bridge.domain.entities.client import Client
+    from brief_bridge.domain.value_objects.client_id import ClientId
+    from brief_bridge.domain.value_objects.client_info import ClientInfo
+    
     # Now with proper business rule implementation
     client_info = ClientInfo(os="Linux", architecture="x86_64", version="Ubuntu 20.04")
-    client = Client(ClientId(client_id), client_info)
+    client = Client(ClientId(ctx.client_id), client_info)
     
     # Business rule: client status management
-    if status == "ONLINE":
+    if ctx.status == "ONLINE":
         client.mark_online()
-    elif status == "OFFLINE":
+    elif ctx.status == "OFFLINE":
         client.mark_offline()
     
-    asyncio.run(client_repository.save(client))
+    asyncio.run(ctx.client_repository.save(client))
 ```
 
 **Stage 2 Validation:**

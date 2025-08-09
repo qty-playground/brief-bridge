@@ -36,6 +36,35 @@ curl -sSL https://your-endpoint.com/client.sh | bash
 AI Assistant → HTTP Server → Public Endpoint → Clients (polling)
 ```
 
+## 🏗️ Development Architecture Choice
+
+Brief Bridge supports **two architecture approaches** for implementation:
+
+### 🚀 **Simplified Architecture** (Recommended)
+**Best for**: Most projects, rapid development, learning BDD
+- Pattern: `Framework ↔ UseCase ↔ Entity/Repository`
+- Faster development with good separation of concerns
+- Full BDD support with ScenarioContext phase management
+
+### 🏛️ **Clean Architecture** 
+**Best for**: Complex business logic, long-term strategic systems  
+- Pattern: `Domain → Application → Infrastructure`
+- Maximum flexibility and maintainability
+- Full BDD support with ScenarioContext phase management
+
+### 🎯 Quick Decision
+**Choose Simplified if**:
+- Small-medium project (< 10 business entities)
+- Team new to Clean Architecture
+- Need fast delivery
+
+**Choose Clean Architecture if**:
+- Complex business rules and workflows
+- Long-term strategic application
+- Team experienced with layered architecture
+
+> **Both architectures include the same BDD testing approach** with pytest-bdd, ScenarioContext phase management (GIVEN→WHEN→THEN enforcement), and Screaming Architecture test organization.
+
 ## API
 
 ```bash
