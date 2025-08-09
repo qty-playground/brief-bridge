@@ -57,47 +57,6 @@ Feature: Register Client Use Case
       }
       """
 
-# TODO: Duplicate registration scenario - Business logic to be discussed
-# Issue: Need to define behavior for repeated client registration
-# Questions: Session concept? Upsert vs error? Disconnect/reconnect handling?
-# Priority: Deferred - Focus on core command dispatch functionality first
-#
-#  @skip
-#  Scenario: Register client that already exists
-#    Given client "existing-client" exists in repository with:
-#      """
-#      {
-#        "client_id": "existing-client",
-#        "name": "Original Name",
-#        "status": "online"
-#      }
-#      """
-#    When I execute client registration with:
-#      """
-#      {
-#        "client_id": "existing-client",
-#        "client_name": "Updated Name"
-#      }
-#      """
-#    Then registration should be successful
-#    And registration response should contain:
-#      """
-#      {
-#        "client_id": "existing-client",
-#        "client_name": "Updated Name",
-#        "client_status": "online",
-#        "registration_successful": true
-#      }
-#      """
-#    And repository should contain updated client with:
-#      """
-#      {
-#        "client_id": "existing-client",
-#        "name": "Updated Name",
-#        "status": "online"
-#      }
-#      """
-
   Scenario: Register client with empty client_id
     Given no preconditions
     When I execute client registration with:

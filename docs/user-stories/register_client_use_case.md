@@ -48,27 +48,6 @@ And client should be saved in repository with:
   - status: "online"
 ```
 
-### Scenario: Register client that already exists
-```
-Given client "existing-client" exists in repository with:
-  - client_id: "existing-client"
-  - name: "Original Name"
-  - status: "online"
-When I execute client registration with:
-  - client_id: "existing-client"
-  - client_name: "Updated Name"
-Then registration should be successful
-And registration response should contain:
-  - client_id: "existing-client"
-  - client_name: "Updated Name"
-  - client_status: "online"
-  - registration_successful: true
-And repository should contain updated client with:
-  - client_id: "existing-client"
-  - name: "Updated Name"
-  - status: "online"
-```
-
 ### Scenario: Register client with empty client_id
 ```
 Given no preconditions
@@ -86,14 +65,12 @@ And no client should be saved in repository
 - **client.registration**: New clients are created with "online" status
 - **client.identity**: Each client must have a non-empty client_id
 - **client.name_optional**: Client name is optional (can be null)
-- **client.update_on_reregister**: Re-registering existing client updates their information
 - **repository.persistence**: All registered clients must be persisted via repository
 
 ## Reusable Step Definitions
 
 ### Given Steps
 - `Given no client exists with id "{client_id}"`
-- `Given client "{client_id}" exists in repository with: {properties}`
 - `Given no preconditions`
 
 ### When Steps
@@ -104,7 +81,6 @@ And no client should be saved in repository
 - `Then registration should fail`
 - `Then registration response should contain: {response_properties}`
 - `Then client should be saved in repository with: {client_properties}`
-- `Then repository should contain updated client with: {client_properties}`
 - `Then no client should be saved in repository`
 
 ## Implementation Notes
