@@ -23,17 +23,17 @@ class ScenarioContext:
     
     Example usage:
         # Given phase - setup allowed
-        ctx.set_phase(BDDPhase.GIVEN)
+        ctx.phase = BDDPhase.GIVEN
         ctx.client_id = "test-123"
         ctx.request_data = {...}
         
         # When phase - result collection allowed
-        ctx.set_phase(BDDPhase.WHEN) 
+        ctx.phase = BDDPhase.WHEN 
         ctx.response = api_call_result  # ✅ Result collection
         ctx.client_id = "new"          # ❌ Raises error
         
         # Then phase - read-only
-        ctx.set_phase(BDDPhase.THEN)
+        ctx.phase = BDDPhase.THEN
         assert ctx.response.status == 200  # ✅ Read access
         ctx.verification_result = True     # ❌ Raises error
     """
@@ -45,13 +45,57 @@ class ScenarioContext:
         object.__setattr__(self, '_results', {})
         object.__setattr__(self, '_phase_locked', False)
     
-    def set_phase(self, phase: BDDPhase) -> None:
-        """Set current BDD phase to control state management permissions"""
+    @property
+    def phase(self) -> BDDPhase:
+        """Get current BDD phase"""
+        return self._phase
+    
+    @phase.setter
+    def phase(self, phase: BDDPhase) -> None:
+        """
+        Set current BDD phase to control state management permissions
+        
+        Phase Upgrade Rules (enforces BDD flow):
+        - GIVEN → WHEN: ✅ Allowed (normal flow)
+        - GIVEN → THEN: ✅ Allowed (skip WHEN if no action needed) 
+        - WHEN → THEN: ✅ Allowed (normal flow)
+        - Any → GIVEN: ❌ Forbidden (no downgrade to setup)
+        - THEN → WHEN: ❌ Forbidden (no downgrade to action)
+        - THEN → GIVEN: ❌ Forbidden (no downgrade to setup)
+        
+        Usage:
+            ctx.phase = BDDPhase.GIVEN  # Simple property assignment
+            ctx.phase = BDDPhase.WHEN   # Automatic validation
+        """
+        current_phase = self._phase
+        
+        # Define phase hierarchy: GIVEN(0) → WHEN(1) → THEN(2)
+        phase_hierarchy = {
+            BDDPhase.GIVEN: 0,
+            BDDPhase.WHEN: 1,
+            BDDPhase.THEN: 2
+        }
+        
+        current_level = phase_hierarchy[current_phase]
+        new_level = phase_hierarchy[phase]
+        
+        # Only allow phase upgrades (same level or higher)
+        if new_level < current_level:
+            raise ValueError(
+                f"Invalid phase transition: {current_phase.value} → {phase.value}. "
+                f"BDD phases can only progress forward: GIVEN → WHEN → THEN. "
+                f"Cannot downgrade from {current_phase.value} back to {phase.value}."
+            )
+        
         object.__setattr__(self, '_phase', phase)
     
     def get_phase(self) -> BDDPhase:
-        """Get current BDD phase"""
+        """Get current BDD phase (deprecated: use .phase property)"""
         return self._phase
+    
+    def set_phase(self, phase: BDDPhase) -> None:
+        """Set BDD phase (deprecated: use .phase property)"""
+        self.phase = phase
     
     def lock_phase(self) -> None:
         """Lock phase to prevent accidental phase changes during test execution"""
@@ -66,6 +110,12 @@ class ScenarioContext:
         # Allow internal attributes
         if name.startswith('_'):
             object.__setattr__(self, name, value)
+            return
+        
+        # Handle phase property separately - use property setter directly
+        if name == 'phase':
+            # Call the property setter directly to trigger validation
+            type(self).phase.__set__(self, value)
             return
             
         current_phase = self._phase
@@ -109,9 +159,11 @@ class ScenarioContext:
         """Clear all state - use with caution, mainly for testing"""
         object.__setattr__(self, '_input_state', {})
         object.__setattr__(self, '_results', {})
-        # Clear dynamic attributes
+        # Clear dynamic attributes (skip built-in properties)
         attrs_to_remove = [attr for attr in dir(self) 
-                          if not attr.startswith('_') and not callable(getattr(self, attr))]
+                          if not attr.startswith('_') 
+                          and not callable(getattr(self, attr))
+                          and attr != 'phase']  # Skip phase property
         for attr in attrs_to_remove:
             delattr(self, attr)
 

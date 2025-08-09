@@ -36,15 +36,15 @@ def context() -> ScenarioContext:
     
     Example usage:
         def given_client_exists(context: ScenarioContext):
-            context.set_phase(BDDPhase.GIVEN)
+            context.phase = BDDPhase.GIVEN
             context.client_id = "test-123"
             
         def when_query_status(context: ScenarioContext):
-            context.set_phase(BDDPhase.WHEN)
+            context.phase = BDDPhase.WHEN
             context.response = api.get_status(context.client_id)
             
         def then_status_is_online(context: ScenarioContext):
-            context.set_phase(BDDPhase.THEN)
+            context.phase = BDDPhase.THEN
             assert context.response.status == "ONLINE"
     """
     return ScenarioContext()
@@ -64,13 +64,13 @@ def test_example():
     ctx = ScenarioContext()
     
     # === GIVEN: Setup input state ===
-    ctx.set_phase(BDDPhase.GIVEN)
+    ctx.phase = BDDPhase.GIVEN
     ctx.client_id = "test-123"
     ctx.api_endpoint = "/api/clients"
     ctx.request_data = {"name": "Test Client"}
     
     # === WHEN: Execute and collect results ===
-    ctx.set_phase(BDDPhase.WHEN)
+    ctx.phase = BDDPhase.WHEN
     # Can read input state
     endpoint = ctx.api_endpoint
     
@@ -82,7 +82,7 @@ def test_example():
     # ctx.client_id = "new-id"  # Raises AttributeError
     
     # === THEN: Read-only assertions ===
-    ctx.set_phase(BDDPhase.THEN)
+    ctx.phase = BDDPhase.THEN
     assert ctx.client_id == "test-123"  # Can read all state
     assert ctx.response["status"] == 201
     
@@ -97,7 +97,7 @@ def test_example():
 @given(parsers.parse('client "{client_id}" exists with status "{status}"'))
 def given_client_exists_with_status(context: ScenarioContext, client_id: str, status: str):
     """Business rule: client.registration - setup test client"""
-    context.set_phase(BDDPhase.GIVEN)
+    context.phase = BDDPhase.GIVEN
     context.client_id = client_id
     context.expected_status = status
     context.test_data = {"setup": "complete"}
@@ -108,7 +108,7 @@ def given_client_exists_with_status(context: ScenarioContext, client_id: str, st
 @when('I query the client status')
 def when_query_client_status(context: ScenarioContext):
     """Business rule: client.status_query - retrieve current status"""
-    context.set_phase(BDDPhase.WHEN)
+    context.phase = BDDPhase.WHEN
     
     # Use input state from GIVEN
     client_id = context.client_id
@@ -130,7 +130,7 @@ def when_query_client_status(context: ScenarioContext):
 @then('the status should match expected value')
 def then_status_matches_expected(context: ScenarioContext):
     """Verify status query results match expectations"""
-    context.set_phase(BDDPhase.THEN)
+    context.phase = BDDPhase.THEN
     
     # Read-only access to all state
     assert context.actual_status == context.expected_status
@@ -163,12 +163,12 @@ print(current_phase)  # BDDPhase.THEN
 **Phase Violation Examples:**
 ```python
 # ❌ Wrong: Modifying input state in WHEN phase
-context.set_phase(BDDPhase.WHEN)
+context.phase = BDDPhase.WHEN
 context.new_input = "not allowed"  # OK - new result
 context.client_id = "modified"     # AttributeError: Cannot modify input state
 
 # ❌ Wrong: Any modification in THEN phase  
-context.set_phase(BDDPhase.THEN)
+context.phase = BDDPhase.THEN
 context.verification = True        # AttributeError: THEN phase is read-only
 
 # Error messages are descriptive:
@@ -423,6 +423,7 @@ def feature_dependencies():
 - Use type hints in parsers (e.g., `{status_code:d}`)
 - Structure test data using fixtures and builders
 - **Set correct BDD phase at the beginning of each step implementation**
+- **Use property syntax: `context.phase = BDDPhase.GIVEN` (simpler than `context.set_phase()`)**
 - **Use GIVEN for input state setup, WHEN for result collection, THEN for assertions**
 - **Leverage state introspection methods for debugging (`get_input_state()`, `get_results()`)**
 
@@ -435,7 +436,7 @@ def feature_dependencies():
 - Put complex logic directly in step functions
 - **Modify input state in WHEN or THEN phases**
 - **Set any attributes in THEN phase (read-only)**
-- **Skip phase transitions - always use `context.set_phase()`**
+- **Skip phase transitions - always set `context.phase`**
 
 ## Error Handling
 
@@ -496,31 +497,31 @@ def given_client_exists(context):
 # ✅ Correct: Always set phase first
 @given('client exists')
 def given_client_exists(context: ScenarioContext):
-    context.set_phase(BDDPhase.GIVEN)
+    context.phase = BDDPhase.GIVEN
     context.client_id = "test"
 
 # ❌ Wrong: Modifying input state in WHEN
 @when('I execute action')
 def when_execute_action(context: ScenarioContext):
-    context.set_phase(BDDPhase.WHEN)
+    context.phase = BDDPhase.WHEN
     context.client_id = "modified"  # AttributeError!
 
 # ✅ Correct: Only collect results in WHEN
 @when('I execute action')
 def when_execute_action(context: ScenarioContext):
-    context.set_phase(BDDPhase.WHEN)
+    context.phase = BDDPhase.WHEN
     context.execution_result = execute_something(context.client_id)
 
 # ❌ Wrong: Setting attributes in THEN
 @then('result should be valid')  
 def then_result_valid(context: ScenarioContext):
-    context.set_phase(BDDPhase.THEN)
+    context.phase = BDDPhase.THEN
     context.validation_result = True  # AttributeError!
 
 # ✅ Correct: Only read state in THEN
 @then('result should be valid')
 def then_result_valid(context: ScenarioContext):
-    context.set_phase(BDDPhase.THEN)
+    context.phase = BDDPhase.THEN
     assert context.execution_result.is_valid()
 ```
 
@@ -528,7 +529,7 @@ def then_result_valid(context: ScenarioContext):
 - **GIVEN**: Can set input state and test data
 - **WHEN**: Can collect results, cannot modify input state  
 - **THEN**: Read-only access for assertions
-- Always call `context.set_phase()` at the beginning of each step
+- Always set `context.phase` at the beginning of each step
 
 ## Performance Tips
 
