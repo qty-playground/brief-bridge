@@ -20,8 +20,13 @@ def invoke(ctx: ScenarioContext, client_id: str) -> None:
     client = Client.register_new_client(client_id=client_id, name=f"Test Client {client_id}")
     
     # Store in repository for use in test
-    test_repository = InMemoryClientRepository()
-    asyncio.run(test_repository.save_registered_client(client))
+    test_client_repository = InMemoryClientRepository()
+    asyncio.run(test_client_repository.save_registered_client(client))
     
-    # Store repository in context for WHEN phase
-    ctx.test_client_repository = test_repository
+    # Setup command repository as well
+    from brief_bridge.repositories.command_repository import InMemoryCommandRepository
+    test_command_repository = InMemoryCommandRepository()
+    
+    # Store repositories in context for WHEN phase
+    ctx.test_client_repository = test_client_repository
+    ctx.test_command_repository = test_command_repository

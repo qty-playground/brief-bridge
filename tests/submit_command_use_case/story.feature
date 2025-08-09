@@ -29,7 +29,6 @@ Feature: Submit Command Use Case
       }
       """
 
-  @skip
   Scenario: Submit command with minimal information
     Given client "minimal-client" is registered in system
     When I submit command with:
@@ -57,7 +56,6 @@ Feature: Submit Command Use Case
       }
       """
 
-  @skip
   Scenario: Submit command to unregistered client
     Given no client exists with id "nonexistent-client"
     When I submit command with:
@@ -77,7 +75,6 @@ Feature: Submit Command Use Case
       """
     And no command should be saved in repository
 
-  @skip
   Scenario: Submit command with empty content
     Given client "valid-client" is registered in system
     When I submit command with:
@@ -97,7 +94,6 @@ Feature: Submit Command Use Case
       """
     And no command should be saved in repository
 
-  @skip
   Scenario: Submit command with empty target client ID
     Given no preconditions
     When I submit command with:

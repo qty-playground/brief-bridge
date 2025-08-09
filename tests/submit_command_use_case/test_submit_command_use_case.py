@@ -32,7 +32,7 @@ def given_no_client_exists_with_id_step(context, client_id):
     given_no_client_exists_with_id.invoke(context, client_id=client_id)
 
 @given('no preconditions')
-def given_no_preconditions(context):
+def given_no_preconditions_step(context):
     """Delegate to given_no_preconditions step module"""
     # Set GIVEN phase
     context.phase = BDDPhase.GIVEN

@@ -12,5 +12,9 @@ def invoke(ctx: ScenarioContext) -> None:
     # Phase already set by wrapper function - ctx.phase = BDDPhase.THEN
     # Read-only access to all state for assertions
     
-    # GREEN Stage 1: Hardcoded fake implementation
-    raise NotImplementedError("Repository empty state verification not implemented")
+    # GREEN Stage 1: Real business rule verification - repository.empty_state
+    import asyncio
+    
+    # Verify repository remains empty when command submission fails
+    all_commands = asyncio.run(ctx.test_command_repository.get_all_commands())
+    assert len(all_commands) == 0, f"Repository should be empty, but contains {len(all_commands)} commands"

@@ -26,15 +26,11 @@ def invoke(ctx: ScenarioContext, command_data: str) -> None:
     )
     
     # GREEN Stage 1: Real production invoke chain with repositories
-    from brief_bridge.repositories.command_repository import InMemoryCommandRepository
     
-    # Get client repository from GIVEN phase
+    # Get repositories from GIVEN phase
     client_repository = ctx.test_client_repository
-    command_repository = InMemoryCommandRepository()
+    command_repository = ctx.test_command_repository
     
     # Create and execute use case
     use_case = SubmitCommandUseCase(client_repository, command_repository)
     ctx.submission_response = asyncio.run(use_case.execute_command_submission(submission_request))
-    
-    # Store repositories for verification in THEN phase
-    ctx.test_command_repository = command_repository
