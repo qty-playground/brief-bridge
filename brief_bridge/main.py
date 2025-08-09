@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from brief_bridge.web.client_router import router as client_router
+from brief_bridge.web.command_router import router as command_router
 
 app = FastAPI(
     title="Brief Bridge",
@@ -9,6 +10,7 @@ app = FastAPI(
 
 # 包含路由
 app.include_router(client_router)
+app.include_router(command_router)
 
 
 @app.get("/health")

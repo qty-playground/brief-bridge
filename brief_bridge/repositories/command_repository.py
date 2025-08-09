@@ -23,6 +23,11 @@ class CommandRepository(ABC):
     async def get_all_commands(self) -> List[Command]:
         """Business rule: command.listing - retrieve all commands"""
         pass
+    
+    @abstractmethod
+    async def find_commands_by_client_id(self, client_id: str) -> List[Command]:
+        """Business rule: command.client_filtering - retrieve all commands for specific client"""
+        pass
 
 
 class InMemoryCommandRepository(CommandRepository):
@@ -48,3 +53,10 @@ class InMemoryCommandRepository(CommandRepository):
     async def get_all_commands(self) -> List[Command]:
         """Business rule: command.listing - return all commands from memory store"""
         return list(self._commands.values())
+    
+    async def find_commands_by_client_id(self, client_id: str) -> List[Command]:
+        """Business rule: command.client_filtering - filter all commands for specific client"""
+        return [
+            cmd for cmd in self._commands.values()
+            if cmd.target_client_id == client_id
+        ]

@@ -31,6 +31,7 @@ class SubmitCommandUseCase:
         # Business rule: command.target_validation - validate target client ID not empty
         if not request.target_client_id or request.target_client_id.strip() == "":
             return CommandSubmissionResponse(
+                target_client_id=request.target_client_id,
                 submission_successful=False,
                 submission_message="Target client ID cannot be empty"
             )
@@ -38,6 +39,7 @@ class SubmitCommandUseCase:
         # Business rule: command.content_validation - validate command content not empty
         if not request.command_content or request.command_content.strip() == "":
             return CommandSubmissionResponse(
+                target_client_id=request.target_client_id,
                 submission_successful=False,
                 submission_message="Command content cannot be empty"
             )
@@ -46,6 +48,7 @@ class SubmitCommandUseCase:
         target_client = await self._client_repository.find_client_by_id(request.target_client_id)
         if not target_client:
             return CommandSubmissionResponse(
+                target_client_id=request.target_client_id,
                 submission_successful=False,
                 submission_message="Target client not found"
             )
