@@ -1,0 +1,1 @@
+"""Register Client Use Case BDD Tests"""
