@@ -70,81 +70,47 @@ pytest -m wip
 pytest -m wip  # Only run during development
 ```
 
-#### GREEN Stage 1: Infrastructure Shell
+#### GREEN Stage 1: Production Invoke Chain Setup
 
-**Objective:** Create minimal Clean Architecture structure with fake/hardcoded implementations.
+**Objective:** Build complete production invoke chain with REAL classes and hardcoded return values.
+
+**Key Principle:** 
+- ✅ **Production code**: Real classes, real methods, hardcoded returns
+- ❌ **Tests**: NO fake production logic - only call production APIs
 
 **Guidelines:**
-- Build CA skeleton components ONLY
-- Use hardcoded/fake data to make test pass
-- **Completely ignore business rules**
-- **Completely ignore proper implementation**
-- Goal: Test goes from RED to GREEN with minimal structure
+- Build production components as required by test scenario
+- Follow your project's existing architectural patterns 
+- Every component has REAL classes with REAL methods
+- Methods return hardcoded values (e.g. `return "hardcoded-uuid"`)
+- Tests only contain test setup and call production code
+- Goal: Complete production flow that makes test pass with minimal implementation
 
-**Required CA Components:**
-Based on `docs/clean-architecture-structure.md`, create:
-- Domain entities (with create_fake methods)
-- Domain value objects (basic implementations)
-- Repository interfaces (in domain layer)
-- Repository implementations (in infrastructure layer)
-- FastAPI routers (NOT endpoints in main.py)
-- Basic step definition implementations
-
-**Example Implementation (following python-coding-style.md.prompt):**
+**Example:**
 ```python
-# brief_bridge/domain/entities/client.py - Use absolute imports
-from brief_bridge.domain.value_objects.client_id import ClientId
-from brief_bridge.domain.value_objects.client_info import ClientInfo
-from brief_bridge.domain.value_objects.client_status import ClientStatus
-
+# Production: REAL classes with hardcoded returns
 class Client:
-    def __init__(self, client_id: ClientId, client_info: ClientInfo):
-        self._client_id = client_id
-        self._client_info = client_info
-        self._status = ClientStatus.ONLINE
-    
-    @classmethod
-    def create_fake_for_testing(cls, client_id_str: str, status: str, availability: str) -> 'Client':
-        """Business rule: test.data_setup - create fake client for testing"""
-        fake_client_id = ClientId(client_id_str)
-        fake_client_info = ClientInfo.create_default_linux()
-        client = cls(fake_client_id, fake_client_info)
-        client._fake_status = status
-        return client
+    def get_status(self) -> str:
+        return "ONLINE"  # Hardcoded for Stage 1
 
-# brief_bridge/infrastructure/fastapi/routers/clients.py - Absolute imports
-from fastapi import APIRouter
-from brief_bridge.application.use_cases.client.register_client_use_case import RegisterClientUseCase
-from brief_bridge.infrastructure.persistence.memory.memory_client_repository import MemoryClientRepository
+class RegisterClientUseCase:
+    async def execute(self, request) -> dict:
+        return {"client_id": "hardcoded-uuid-123", "status": "ONLINE"}
 
-router = APIRouter()
-
-@router.post("/register")
-async def register_client_endpoint(request: RegisterClientRequest) -> dict:
-    """Handle client registration through Clean Architecture layers"""
-    client_repository = MemoryClientRepository()
-    use_case = RegisterClientUseCase(client_repository)
-    return {"client_id": "fake-uuid", "status": "ONLINE"}
-
-# brief_bridge/main.py - ONLY include router, no business endpoints
-from brief_bridge.infrastructure.fastapi.routers import clients
-app.include_router(clients.router, prefix="/clients", tags=["clients"])
-
-# tests/{feature}/test_{feature}.py - Self-documenting step names
-@given(parsers.parse('client "{client_id}" exists with status "{status}"'))
-def given_client_exists_in_system_with_status(context: dict, client_id: str, status: str, client_repository: ClientRepository) -> None:
-    """Business rule: client.registration - setup test client with specific status"""
-    fake_client = Client.create_fake_for_testing(client_id, status, "IDLE")
-    asyncio.run(client_repository.save(fake_client))
+# Test: Only calls production code - NO fake logic
+def invoke(ctx: TestContext) -> None:
+    use_case = RegisterClientUseCase()
+    response = asyncio.run(use_case.execute(ctx.request))
+    ctx.created_client_id = response["client_id"]
 ```
 
 **Stage 1 Validation:**
 ```bash
 pytest -m wip  # Should PASS
 ```
-- [ ] Test passes with hardcoded/fake implementations
-- [ ] CA structure created (entities, repositories, etc.)
-- [ ] No business rules implemented yet
+- [ ] Test passes with REAL production classes (hardcoded returns)
+- [ ] NO fake logic in test code - tests only call production
+- [ ] Ready for Stage 2 business rule implementation
 
 #### GREEN Stage 2: Business Rule Implementation
 
@@ -312,6 +278,8 @@ pytest  # Run complete test suite
 - ❌ Implement business rules before GREEN Stage 2
 - ❌ Add features not required by current scenario
 - ❌ Add business endpoints directly to main.py (use routers instead)
+- ❌ **CRITICAL**: Put fake production logic in test code (violates responsibility separation)
+- ❌ **CRITICAL**: Put test-specific methods in production classes
 
 ## AI Assistant Behavior Guidelines
 
