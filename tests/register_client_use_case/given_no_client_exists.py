@@ -12,5 +12,6 @@ def invoke(ctx: ScenarioContext) -> None:
     # Phase already set by wrapper function - ctx.phase = BDDPhase.GIVEN
     # Can access input state set in GIVEN phase
     
-    # GREEN Stage 1: Hardcoded fake implementation
-    raise NotImplementedError("Client existence verification not implemented")
+    # GREEN Stage 1: Hardcoded implementation - assume no client exists
+    # This is setup verification, no actual action needed in Stage 1
+    pass

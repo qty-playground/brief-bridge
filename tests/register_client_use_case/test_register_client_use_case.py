@@ -75,27 +75,27 @@ def then_registration_has_failed(context):
 @then('registration response should contain:')
 def then_registration_response_contains_expected_data(context, docstring):
     """Delegate to then_registration_response_should_contain step module"""
-    # Set THEN phase and verification data before delegating
+    # Store expected data in cross-phase storage, then switch to THEN phase
+    context.set_cross_phase_data('expected_response_body', docstring)
     context.phase = BDDPhase.THEN
-    context.expected_response_body = docstring
     then_registration_response_should_contain.invoke(context)
 
 
 @then('client should be saved in repository with:')
 def then_client_was_saved_in_repository_with_data(context, docstring):
     """Delegate to then_client_should_be_saved_in_repository step module"""
-    # Set THEN phase and verification data before delegating
+    # Store expected data in cross-phase storage, then switch to THEN phase
+    context.set_cross_phase_data('expected_client_data', docstring)
     context.phase = BDDPhase.THEN
-    context.expected_client_data = docstring
     then_client_should_be_saved_in_repository.invoke(context)
 
 
 @then('repository should contain updated client with:')
 def then_repository_contains_updated_client_with_data(context, docstring):
     """Delegate to then_repository_should_contain_updated_client step module"""
-    # Set THEN phase and verification data before delegating
+    # Store expected data in cross-phase storage, then switch to THEN phase
+    context.set_cross_phase_data('expected_client_data', docstring)
     context.phase = BDDPhase.THEN
-    context.expected_client_data = docstring
     then_repository_should_contain_updated_client.invoke(context)
 
 

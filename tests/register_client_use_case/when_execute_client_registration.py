@@ -1,6 +1,7 @@
 """When I execute client registration - Screaming Architecture naming"""
 from conftest import ScenarioContext, BDDPhase
 import json
+import asyncio
 
 # Simplified Architecture imports
 from brief_bridge.use_cases.register_client_use_case import RegisterClientUseCase, ClientRegistrationRequest
@@ -22,10 +23,7 @@ def invoke(ctx: ScenarioContext) -> None:
         client_name=request_data.get("client_name")
     )
     
-    # Execute use case
-    # repository = InMemoryClientRepository()
-    # use_case = RegisterClientUseCase(repository)
-    # ctx.registration_response = await use_case.execute_client_registration(registration_request)
-    
-    # GREEN Stage 1: Hardcoded fake implementation
-    raise NotImplementedError("Client registration use case execution not implemented")
+    # GREEN Stage 1: Real production invoke chain with hardcoded repository
+    repository = InMemoryClientRepository()
+    use_case = RegisterClientUseCase(repository)
+    ctx.registration_response = asyncio.run(use_case.execute_client_registration(registration_request))

@@ -1,6 +1,6 @@
 Feature: Register Client Use Case
 
-  @skip
+  @wip
   Scenario: Register new client successfully
     Given no client exists with id "new-client-001"
     When I execute client registration with:
