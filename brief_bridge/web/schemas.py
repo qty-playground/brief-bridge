@@ -32,6 +32,10 @@ class SubmitCommandResponseSchema(BaseModel):
     target_client_id: str
     submission_successful: bool
     submission_message: str
+    # New fields for execution results
+    result: Optional[str] = None
+    error: Optional[str] = None
+    execution_time: Optional[float] = None
 
 
 class CommandSchema(BaseModel):
@@ -41,3 +45,21 @@ class CommandSchema(BaseModel):
     type: str
     status: str
     created_at: Optional[str] = None
+    # New fields for execution results
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    result: Optional[str] = None
+    error: Optional[str] = None
+    execution_time: Optional[float] = None
+
+
+class SubmitResultRequestSchema(BaseModel):
+    command_id: str
+    output: Optional[str] = None
+    error: Optional[str] = None
+    execution_time: Optional[float] = None
+
+
+class SubmitResultResponseSchema(BaseModel):
+    status: str = "success"
+    message: str = "Result received successfully"
