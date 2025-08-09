@@ -147,7 +147,7 @@ class Client:
         self._status = ClientStatus.OFFLINE
         self._availability = ClientAvailability.IDLE
 
-# tests/{feature}/given_steps.py (updated)
+# tests/{feature}/given_create_client_with_status.py (updated)
 @given('client "{client_id}" exists with status "{status}" and availability "{availability}"')
 def given_client_exists(client_id, status, availability, client_repository):
     # Now with proper business rule implementation
@@ -303,7 +303,7 @@ When you complete any TDD phase (RED, GREEN Stage 1, GREEN Stage 2, REFACTOR), y
 **Files modified:** 
 - brief_bridge/domain/entities/...
 - brief_bridge/infrastructure/...
-- tests/{feature}/given_steps.py
+- tests/{feature}/given_create_client_with_status.py
 
 **Business Rules Implemented:** [List specific business rules addressed]
 ```

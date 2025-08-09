@@ -14,7 +14,7 @@ Ensure BDD tests maintain proper boundaries between behavior specification and i
 
 Use the Read tool to load:
 1. Current feature file: `tests/{feature}/story.feature`
-2. Step implementations: `tests/{feature}/{given,when,then}_steps.py`
+2. Step implementations: Individual step modules using Screaming Architecture naming (SAM pattern)
 3. Domain model: `docs/domain-model.md` - For business rule reference
 4. User story: `docs/user-stories/{feature}.md` - For expected behavior
 5. `prompts/reference/python-coding-style.md.prompt` - For coding standards
@@ -261,13 +261,13 @@ def then_client_status_shows_availability(availability):
 **Check for business logic in steps:**
 ```bash
 # Look for business rule implementation in test steps
-grep -r "if.*status\|if.*availability\|BusinessRule" tests/*/given_steps.py tests/*/when_steps.py tests/*/then_steps.py
+grep -r "if.*status\|if.*availability\|BusinessRule" tests/*/given_*.py tests/*/when_*.py tests/*/then_*.py
 ```
 
 **Check for internal state access:**
 ```bash
 # Look for internal attribute access
-grep -r "\._[a-zA-Z]" tests/*/then_steps.py
+grep -r "\._[a-zA-Z]" tests/*/then_*.py
 ```
 
 **Check feature file language:**

@@ -402,9 +402,12 @@ class Client:
 tests/submit_command/
 ├── story.feature                # Clear: This is the BDD feature
 ├── test_submit_command.py       # Clear: Main test orchestrator
-├── given_steps.py              # Clear: Given step implementations
-├── when_steps.py               # Clear: When step implementations
-└── then_steps.py               # Clear: Then step implementations
+├── given_create_client_with_status.py      # Screaming Architecture: Business intent in filename
+├── given_setup_test_environment.py         # SAM: Single Action Method per module
+├── when_submit_api_request.py              # Self-documenting: Clear business purpose
+├── when_execute_command.py                 # Command Pattern: invoke() method
+├── then_verify_response_status.py          # One responsibility: Status verification only
+└── then_validate_response_body.py          # Single concern: Response body validation
 ```
 
 ### ❌ DON'T: Organization Violations

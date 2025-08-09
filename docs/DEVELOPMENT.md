@@ -25,11 +25,14 @@ brief-bridge/
 ├── tests/                              # BDD tests using pytest-bdd
 │   ├── {feature_name}/                 # Per-feature test directories
 │   │   ├── story.feature              # Gherkin feature file
-│   │   ├── test_{feature_name}.py     # Main test orchestrator
-│   │   ├── given_steps.py             # Given step implementations
-│   │   ├── when_steps.py              # When step implementations
-│   │   └── then_steps.py              # Then step implementations
-│   └── conftest.py                     # pytest configuration
+│   │   ├── test_{feature_name}.py     # Step wrapper file (delegates to step modules)
+│   │   ├── given_create_client_with_status.py      # One step per module (SAM)
+│   │   ├── given_setup_test_environment.py         # Screaming Architecture naming
+│   │   ├── when_submit_api_request.py              # Business intent in filename
+│   │   ├── when_execute_command.py                 # Single responsibility
+│   │   ├── then_verify_response_status.py          # Self-documenting names
+│   │   └── then_validate_response_body.py          # Command Pattern invoke()
+│   └── conftest.py                     # pytest configuration with ScenarioContext
 ├── docs/                               # Design documentation
 │   ├── DEVELOPMENT.md                  # This file
 │   ├── domain-model.md                 # Domain model with UML
