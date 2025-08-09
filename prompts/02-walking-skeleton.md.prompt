@@ -3,6 +3,8 @@
 ## Objective
 Build pytest-bdd infrastructure without real implementation - create the testing framework shell with NotImplementedError stubs.
 
+**Critical Goal: Ensure all scenarios can be discovered by pytest-bdd without StepDefinitionNotFoundError**
+
 ## Prerequisites
 - Feature file exists in `tests/{feature}/story.feature`
 - All scenarios marked with @skip
@@ -174,6 +176,16 @@ python -m pytest tests/{feature}/ --collect-only -v
 
 # Test a skipped scenario
 python -m pytest tests/{feature}/ -v
+
+# CRITICAL: Check for StepDefinitionNotFoundError
+echo "🔍 Checking for framework errors..."
+python -m pytest tests/ --collect-only 2>&1 | grep -E "(StepDefinitionNotFoundError|ImportError|ModuleNotFoundError)"
+if [ $? -eq 0 ]; then
+    echo "❌ Framework errors detected - fix before proceeding"
+    exit 1
+else
+    echo "✅ No framework errors detected"
+fi
 ```
 
 Expected output:
@@ -181,6 +193,7 @@ Expected output:
 - All scenarios marked as SKIPPED due to @skip marker
 - No import errors from test file
 - All step definitions correctly matched to feature file steps
+- **CRITICAL**: No StepDefinitionNotFoundError or similar framework errors
 
 ## Implementation Guidelines
 
