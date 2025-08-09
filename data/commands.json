@@ -1,0 +1,82 @@
+{
+  "8df69296-06d7-44f4-a9b6-94f40be2692b": {
+    "command_id": "8df69296-06d7-44f4-a9b6-94f40be2692b",
+    "target_client_id": "file-test-001",
+    "content": "echo \"File persistence test\"",
+    "type": "shell",
+    "status": "pending",
+    "created_at": "2025-08-09T08:41:59.932000"
+  },
+  "aa2935de-e24e-4684-85f4-4d455b7b62f9": {
+    "command_id": "aa2935de-e24e-4684-85f4-4d455b7b62f9",
+    "target_client_id": "final-file-test",
+    "content": "ls -la",
+    "type": "shell",
+    "status": "pending",
+    "created_at": "2025-08-09T08:42:43.860884"
+  },
+  "e6f6a0be-7fe2-4a50-8430-cbe8c561fd5b": {
+    "command_id": "e6f6a0be-7fe2-4a50-8430-cbe8c561fd5b",
+    "target_client_id": "test-laptop-001",
+    "content": "ls -la",
+    "type": "shell",
+    "status": "pending",
+    "created_at": "2025-08-09T08:49:55.611109"
+  },
+  "e24c3955-b21e-45fa-af41-a0ac68106e80": {
+    "command_id": "e24c3955-b21e-45fa-af41-a0ac68106e80",
+    "target_client_id": "test-laptop-001",
+    "content": "echo 'Hello from AI Assistant! Time: $(date)'",
+    "type": "shell",
+    "status": "pending",
+    "created_at": "2025-08-09T08:49:59.654958"
+  },
+  "4c6778e0-bc4a-4a11-8a80-135bb5c46d53": {
+    "command_id": "4c6778e0-bc4a-4a11-8a80-135bb5c46d53",
+    "target_client_id": "test-laptop-001",
+    "content": "echo 'Performing automated maintenance check...'",
+    "type": "shell",
+    "status": "pending",
+    "created_at": "2025-08-09T08:50:03.713758"
+  },
+  "7a17e820-9e24-4ade-9eda-c4065645460e": {
+    "command_id": "7a17e820-9e24-4ade-9eda-c4065645460e",
+    "target_client_id": "test-laptop-001",
+    "content": "df -h",
+    "type": "shell",
+    "status": "pending",
+    "created_at": "2025-08-09T08:50:07.778283"
+  },
+  "1f284188-8daa-4124-9b4f-046431090c36": {
+    "command_id": "1f284188-8daa-4124-9b4f-046431090c36",
+    "target_client_id": "test-laptop-001",
+    "content": "free -h || vm_stat",
+    "type": "shell",
+    "status": "pending",
+    "created_at": "2025-08-09T08:50:11.834937"
+  },
+  "21c69b68-a661-493c-8a05-42e0d82c643c": {
+    "command_id": "21c69b68-a661-493c-8a05-42e0d82c643c",
+    "target_client_id": "test-laptop-001",
+    "content": "echo 'AI Assistant is monitoring system health'",
+    "type": "shell",
+    "status": "pending",
+    "created_at": "2025-08-09T08:50:15.918685"
+  },
+  "0d142348-e8ab-457e-a347-c5daf64f9315": {
+    "command_id": "0d142348-e8ab-457e-a347-c5daf64f9315",
+    "target_client_id": "test-laptop-001",
+    "content": "ps aux | head -10",
+    "type": "shell",
+    "status": "pending",
+    "created_at": "2025-08-09T08:50:19.972807"
+  },
+  "13ac9e14-4173-4112-9992-099f03125738": {
+    "command_id": "13ac9e14-4173-4112-9992-099f03125738",
+    "target_client_id": "test-laptop-001",
+    "content": "echo 'AI Task: Gathering system information'",
+    "type": "shell",
+    "status": "pending",
+    "created_at": "2025-08-09T08:50:24.024477"
+  }
+}

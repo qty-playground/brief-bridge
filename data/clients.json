@@ -1,0 +1,17 @@
+{
+  "file-test-001": {
+    "client_id": "file-test-001",
+    "name": "File Test Client",
+    "status": "online"
+  },
+  "final-file-test": {
+    "client_id": "final-file-test",
+    "name": "Final Test Client",
+    "status": "online"
+  },
+  "test-laptop-001": {
+    "client_id": "test-laptop-001",
+    "name": "Test Laptop",
+    "status": "online"
+  }
+}
