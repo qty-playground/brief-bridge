@@ -234,4 +234,4 @@ logs/
 *.pid.lock
 
 # Temporary uploaded scripts (Brief Bridge specific)
-uploaded_scripts/
+uploaded_scripts/data/
