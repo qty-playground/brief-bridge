@@ -9,7 +9,6 @@ Feature: Tunnel Setup
     And should display public URL with pattern "https://[a-z0-9]+.ngrok.io"
     And API should be accessible through public URL
 
-  @wip
   Scenario: Manual tunnel setup
     Given Brief Bridge server is running
     When administrator calls tunnel setup API with:
