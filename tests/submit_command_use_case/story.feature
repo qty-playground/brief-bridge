@@ -159,3 +159,103 @@ Feature: Submit Command Use Case
       """
     And client "client-A" should have only their command in repository
     And client "client-B" should have only their command in repository
+
+  Scenario: Submit base64 encoded command with complex quotes
+    Given client "test-client-001" is registered and online
+    And client will execute commands successfully
+    When I submit command with:
+      """
+      {
+        "target_client_id": "test-client-001",
+        "command_content": "ZWNobyAiTWVzc2FnZSB3aXRoICdzaW5nbGUnIGFuZCBcImRvdWJsZVwiIHF1b3RlcyI=",
+        "command_type": "shell",
+        "encoding": "base64"
+      }
+      """
+    Then command submission should be successful
+    And submission response should contain:
+      """
+      {
+        "target_client_id": "test-client-001",
+        "submission_successful": true,
+        "submission_message": "Command executed successfully",
+        "result": "Message with 'single' and \"double\" quotes"
+      }
+      """
+    And command should be saved in repository with:
+      """
+      {
+        "target_client_id": "test-client-001",
+        "content": "echo \"Message with 'single' and \\\"double\\\" quotes\"",
+        "type": "shell",
+        "encoding": "base64",
+        "status": "completed",
+        "result": "Message with 'single' and \"double\" quotes"
+      }
+      """
+
+  Scenario: Submit base64 encoded multi-line script
+    Given client "test-client-001" is registered and online  
+    And client will execute commands successfully
+    When I submit command with:
+      """
+      {
+        "target_client_id": "test-client-001",
+        "command_content": "IyEvYmluL2Jhc2gKZWNobyAiU3RhcnRpbmcgc2NyaXB0Li4uIgpWQVI9InZhbHVlIHdpdGggJ3F1b3RlcyciCmVjaG8gIlZhcmlhYmxlOiAkVkFSIgplY2hvICJTY3JpcHQgY29tcGxldGVkIg==",
+        "command_type": "shell",
+        "encoding": "base64"
+      }
+      """
+    Then command submission should be successful
+    And submission response should contain:
+      """
+      {
+        "target_client_id": "test-client-001",
+        "submission_successful": true,
+        "submission_message": "Command executed successfully"
+      }
+      """
+
+  Scenario: Submit invalid base64 encoded command
+    Given client "test-client-001" is registered and online
+    When I submit command with:
+      """
+      {
+        "target_client_id": "test-client-001", 
+        "command_content": "invalid-base64-string!!!",
+        "command_type": "shell",
+        "encoding": "base64"
+      }
+      """
+    Then command submission should fail
+    And submission response should contain:
+      """
+      {
+        "target_client_id": "test-client-001",
+        "submission_successful": false,
+        "submission_message": "Invalid base64 encoding"
+      }
+      """
+    And no command should be saved in repository
+
+  Scenario: Backward compatibility - regular command without encoding
+    Given client "test-client-001" is registered and online
+    And client will execute commands successfully
+    When I submit command with:
+      """
+      {
+        "target_client_id": "test-client-001",
+        "command_content": "echo 'regular command'",
+        "command_type": "shell"
+      }
+      """
+    Then command submission should be successful
+    And submission response should contain:
+      """
+      {
+        "target_client_id": "test-client-001",
+        "submission_successful": true,
+        "submission_message": "Command executed successfully",
+        "result": "regular command"
+      }
+      """

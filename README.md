@@ -93,10 +93,50 @@ Brief Bridge supports **two architecture approaches** for implementation:
 GET  /                     # Complete API guide for AI assistants
 GET  /docs                 # Interactive Swagger documentation
 POST /tunnel/setup         # Setup ngrok tunnel  
-POST /commands/submit      # Submit command to client
+POST /commands/submit      # Submit command to client (supports base64 encoding)
 GET  /commands/            # List all commands and results
 GET  /clients/             # List registered clients
 GET  /install.ps1          # PowerShell client install script
+```
+
+### Base64 Command Encoding
+
+For commands with complex quotes, multi-line content, or special characters, use base64 encoding to avoid shell escaping issues:
+
+**When to use base64 encoding:**
+- Commands longer than 3 lines
+- Commands with both single and double quotes
+- Scripts with complex syntax or special characters
+
+**Example without encoding (problematic):**
+```json
+{
+  "target_client_id": "my-client",
+  "command_content": "Write-Host \"Hello 'World'\" -ForegroundColor Green",
+  "command_type": "powershell"
+}
+```
+
+**Example with base64 encoding (recommended):**
+```json
+{
+  "target_client_id": "my-client", 
+  "command_content": "V3JpdGUtSG9zdCAiSGVsbG8gJ1dvcmxkJyIgLUZvcmVncm91bmRDb2xvciBHcmVlbg==",
+  "command_type": "powershell",
+  "encoding": "base64"
+}
+```
+
+**Multi-line script example:**
+```bash
+# Original script:
+# if ($true) {
+#     Write-Host "Line 1"
+#     Write-Host "Line 2"  
+# }
+
+# Base64 encoded:
+echo 'aWYgKCR0cnVlKSB7CiAgICBXcml0ZS1Ib3N0ICJMaW5lIDEiCiAgICBXcml0ZS1Ib3N0ICJMaW5lIDIiIAp9' | base64 -d
 ```
 
 ### CLI Options

@@ -167,6 +167,59 @@ And each client should only see their own commands
 - **command.no_interference**: One client's command execution doesn't affect another's
 - **command.client_filtering**: Each client only receives their assigned commands
 
+### Scenario: Submit base64 encoded command with complex quotes
+```
+Given client "powershell-client" is registered and online
+And client will execute commands successfully
+When I submit command with:
+  - target_client_id: "powershell-client"
+  - command_content: "V3JpdGUtSG9zdCAiSGVsbG8gJ1dvcmxkJyIgLUZvcmVncm91bmRDb2xvciBHcmVlbg=="
+  - command_type: "powershell"
+  - encoding: "base64"
+Then command submission should be successful
+And submission response should contain:
+  - command_id: [generated-uuid]
+  - target_client_id: "powershell-client"
+  - submission_successful: true
+  - submission_message: "Command executed successfully"
+  - result: "Hello 'World'"
+And command should be saved in repository with:
+  - content: "V3JpdGUtSG9zdCAiSGVsbG8gJ1dvcmxkJyIgLUZvcmVncm91bmRDb2xvciBHcmVlbg=="
+  - encoding: "base64"
+  - status: "completed"
+```
+
+### Scenario: Submit base64 encoded multi-line script
+```
+Given client "script-client" is registered and online
+And client will execute commands successfully
+When I submit command with:
+  - target_client_id: "script-client"
+  - command_content: "aWYgKCR0cnVlKSB7CiAgICBXcml0ZS1Ib3N0ICJMaW5lIDEiCiAgICBXcml0ZS1Ib3N0ICJMaW5lIDIiCn0="
+  - command_type: "powershell"
+  - encoding: "base64"
+Then command submission should be successful
+And the decoded script should execute properly
+And submission response should contain:
+  - submission_successful: true
+  - result: [multi-line-output]
+```
+
+### Scenario: Submit invalid base64 encoded command
+```
+Given client "test-client" is registered and online
+When I submit command with:
+  - target_client_id: "test-client"
+  - command_content: "invalid-base64-content!!!"
+  - command_type: "shell"
+  - encoding: "base64"
+Then command submission should fail
+And submission response should contain:
+  - submission_successful: false
+  - submission_message: "Invalid base64 encoding"
+  - error: "Invalid base64 encoding"
+```
+
 ## Notes
 - This use case now handles both command submission AND result waiting
 - AI assistants get synchronous response with execution results
@@ -174,3 +227,6 @@ And each client should only see their own commands
 - Command status lifecycle: pending → processing → completed/failed
 - Maximum wait time is 30 seconds before timeout
 - New command fields: result, error, execution_time, started_at, completed_at
+- **Base64 encoding support**: Use for commands > 3 lines or with complex quotes
+- **Base64 validation**: Invalid base64 strings are rejected with clear error messages
+- **Encoding preservation**: Original encoding information is stored for audit trail

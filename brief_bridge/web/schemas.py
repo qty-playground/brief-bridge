@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 
@@ -22,9 +22,10 @@ class ClientSchema(BaseModel):
 
 
 class SubmitCommandRequestSchema(BaseModel):
-    target_client_id: str
-    command_content: str
-    command_type: str = "shell"
+    target_client_id: str = Field(..., description="ID of the target client to execute the command")
+    command_content: str = Field(..., description="Command content to execute. Use base64 encoding for complex commands with quotes or multi-line content.", examples=["echo 'Hello World'", "V3JpdGUtSG9zdCAiSGVsbG8gZnJvbSBQb3dlclNoZWxsISI="])
+    command_type: str = Field(default="shell", description="Type of command to execute", examples=["shell", "powershell"])
+    encoding: Optional[str] = Field(default=None, description="Encoding method for command_content. Use 'base64' for complex commands with quotes, multi-line scripts, or special characters to avoid shell escaping issues.", examples=[None, "base64"])
 
 
 class SubmitCommandResponseSchema(BaseModel):
@@ -41,9 +42,10 @@ class SubmitCommandResponseSchema(BaseModel):
 class CommandSchema(BaseModel):
     command_id: str
     target_client_id: str
-    content: str
+    content: str = Field(..., description="Command content (original or base64 encoded)")
     type: str
     status: str
+    encoding: Optional[str] = Field(default=None, description="Encoding method used: 'base64' or None", examples=[None, "base64"])
     created_at: Optional[str] = None
     # New fields for execution results
     started_at: Optional[str] = None

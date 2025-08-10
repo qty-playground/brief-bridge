@@ -14,6 +14,7 @@ class CommandSubmissionRequest:
     target_client_id: str
     command_content: str
     command_type: Optional[str] = "shell"
+    encoding: Optional[str] = None  # base64, None for regular commands
 
 
 @dataclass
@@ -86,6 +87,7 @@ class SubmitCommandUseCase:
         """Business rule: command.target_validation - submit command and wait for results"""
         from brief_bridge.entities.command import Command
         import asyncio
+        import base64
         
         # Business rule: command.target_validation - validate target client ID not empty
         if not request.target_client_id or request.target_client_id.strip() == "":
@@ -103,6 +105,18 @@ class SubmitCommandUseCase:
                 submission_message="Command content cannot be empty"
             )
         
+        # Business rule: command.encoding_validation - decode base64 if specified
+        decoded_content = request.command_content
+        if request.encoding == "base64":
+            try:
+                decoded_content = base64.b64decode(request.command_content).decode('utf-8')
+            except Exception:
+                return CommandSubmissionResponse(
+                    target_client_id=request.target_client_id,
+                    submission_successful=False,
+                    submission_message="Invalid base64 encoding"
+                )
+        
         # Business rule: command.target_validation - check if client exists
         target_client = await self._client_repository.find_client_by_id(request.target_client_id)
         if not target_client:
@@ -115,8 +129,9 @@ class SubmitCommandUseCase:
         # Business rule: command.unique_id - create command with unique ID
         command = Command.create_new_command(
             target_client_id=request.target_client_id,
-            content=request.command_content,
-            command_type=request.command_type or "shell"
+            content=decoded_content,  # Use decoded content
+            command_type=request.command_type or "shell",
+            encoding=request.encoding  # Store original encoding info
         )
         
         # Business rule: command.persistence - save command to repository

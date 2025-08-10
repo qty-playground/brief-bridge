@@ -9,16 +9,35 @@ from brief_bridge.repositories.command_repository import CommandRepository
 router = APIRouter(prefix="/commands", tags=["commands"])
 
 
-@router.post("/submit", response_model=SubmitCommandResponseSchema)
+@router.post("/submit", 
+             response_model=SubmitCommandResponseSchema,
+             summary="Submit Command to Client",
+             description="""
+Submit a command to a target client for execution. 
+
+**Base64 Encoding Recommended For:**
+- Commands longer than 3 lines
+- Commands with both single and double quotes  
+- Multi-line scripts or complex syntax
+- Commands with special characters that need shell escaping
+
+**Examples:**
+- Simple command: `"echo 'Hello World'"`
+- Complex command (base64): `"V3JpdGUtSG9zdCAiSGVsbG8gJ1dvcmxkJyIgLUZvcmVncm91bmRDb2xvciBHcmVlbg=="` 
+  (decodes to: `Write-Host "Hello 'World'" -ForegroundColor Green`)
+
+The API waits for command execution and returns results synchronously.
+             """)
 async def submit_command_to_client(
     request: SubmitCommandRequestSchema,
     use_case: SubmitCommandUseCase = Depends(get_submit_command_use_case)
 ) -> SubmitCommandResponseSchema:
-    """API endpoint: Submit command to target client"""
+    """Submit command to target client with optional base64 encoding support"""
     use_case_request: CommandSubmissionRequest = CommandSubmissionRequest(
         target_client_id=request.target_client_id,
         command_content=request.command_content,
-        command_type=request.command_type
+        command_type=request.command_type,
+        encoding=request.encoding
     )
     
     submission_response = await use_case.execute_command_submission(use_case_request)
@@ -50,6 +69,7 @@ async def get_command_by_id(
         content=command.content,
         type=command.type,
         status=command.status,
+        encoding=command.encoding,
         created_at=str(command.created_at) if command.created_at else None,
         started_at=str(command.started_at) if command.started_at else None,
         completed_at=str(command.completed_at) if command.completed_at else None,
@@ -72,6 +92,7 @@ async def get_all_commands(
             content=command.content,
             type=command.type,
             status=command.status,
+            encoding=command.encoding,
             created_at=str(command.created_at) if command.created_at else None,
             started_at=str(command.started_at) if command.started_at else None,
             completed_at=str(command.completed_at) if command.completed_at else None,
@@ -104,6 +125,7 @@ async def get_commands_by_client_id(
             content=command.content,
             type=command.type,
             status=command.status,
+            encoding=command.encoding,
             created_at=str(command.created_at) if command.created_at else None,
             started_at=str(command.started_at) if command.started_at else None,
             completed_at=str(command.completed_at) if command.completed_at else None,

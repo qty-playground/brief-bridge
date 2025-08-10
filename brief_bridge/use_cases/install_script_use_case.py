@@ -83,50 +83,6 @@ if ($DebugMode -eq "true") {{
         
         return install_script
     
-    def generate_bash_script(self, client_id: Optional[str] = None,
-                           client_name: Optional[str] = None, 
-                           poll_interval: int = 5,
-                           debug: bool = False) -> str:
-        """Generate Bash install script"""
-        
-        install_script = f"""#!/bin/bash
-# Brief Bridge One-Click Bash Installer
-# Auto-generated from {self.server_url}
-
-set -euo pipefail
-
-echo "Brief Bridge Client Installer"
-echo "Downloading and starting client..."
-
-# Default parameters
-SERVER_URL="{self.server_url}"
-CLIENT_ID="{client_id or '$(hostname)'}"
-CLIENT_NAME="{client_name or 'Bash Client'}"
-POLL_INTERVAL={poll_interval}
-DEBUG={str(debug).lower()}
-
-# Download location
-INSTALL_DIR="$HOME/.brief-bridge"
-CLIENT_SCRIPT="$INSTALL_DIR/brief-client.sh"
-
-# Create install directory
-mkdir -p "$INSTALL_DIR"
-
-# Download client script
-echo "Downloading client script..."
-curl -sSL "{self.server_url}/client/download/linux" -o "$CLIENT_SCRIPT"
-chmod +x "$CLIENT_SCRIPT"
-
-# Execute client
-echo "Starting Brief Bridge client..."
-if [ "$DEBUG" = "true" ]; then
-    "$CLIENT_SCRIPT" --server "$SERVER_URL" --client-id "$CLIENT_ID" --client-name "$CLIENT_NAME" --poll-interval $POLL_INTERVAL --debug
-else
-    "$CLIENT_SCRIPT" --server "$SERVER_URL" --client-id "$CLIENT_ID" --client-name "$CLIENT_NAME" --poll-interval $POLL_INTERVAL
-fi
-"""
-        
-        return install_script
     
     def _get_powershell_client_base(self) -> str:
         """Get the base PowerShell client script content"""
@@ -209,12 +165,32 @@ function Register-Client {
 function Invoke-PowerShellCommand {
     param(
         [string]$Command,
+        [string]$Encoding = "",
         [int]$TimeoutSeconds = 30
     )
     
     $startTime = Get-Date
     
     try {
+        # Handle base64 encoded commands
+        if ($Encoding -eq "base64") {
+            Write-Host "[DECODE] Decoding base64 command" -ForegroundColor Cyan
+            try {
+                $decodedBytes = [System.Convert]::FromBase64String($Command)
+                $Command = [System.Text.Encoding]::UTF8.GetString($decodedBytes)
+                Write-Host "[DECODE] Successfully decoded base64 command" -ForegroundColor Green
+            }
+            catch {
+                Write-Host "[ERROR] Failed to decode base64: $($_.Exception.Message)" -ForegroundColor Red
+                return @{
+                    success = $false
+                    output = $null
+                    error = "Invalid base64 encoding"
+                    execution_time = 0.0
+                }
+            }
+        }
+        
         Write-Host "[EXEC] $Command" -ForegroundColor Yellow
         
         # Execute command and capture output
@@ -316,8 +292,9 @@ try {
                 # Reset error counter on successful poll
                 $consecutiveErrors = 0
                 
-                # Execute the command
-                $result = Invoke-PowerShellCommand -Command $command.command_content -TimeoutSeconds $command.timeout
+                # Execute the command with encoding support
+                $encoding = if ($command.encoding) { $command.encoding } else { "" }
+                $result = Invoke-PowerShellCommand -Command $command.command_content -Encoding $encoding -TimeoutSeconds $command.timeout
                 
                 # Submit the result
                 $submitted = Submit-CommandResult -CommandId $command.command_id -Result $result

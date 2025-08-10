@@ -16,5 +16,7 @@ def invoke(ctx: ScenarioContext) -> None:
     import asyncio
     
     # Verify repository remains empty when command submission fails
-    all_commands = asyncio.run(ctx.test_command_repository.get_all_commands())
+    # Get command repository from context - handle both naming conventions
+    command_repository = getattr(ctx, 'command_repository', None) or ctx.test_command_repository
+    all_commands = asyncio.run(command_repository.get_all_commands())
     assert len(all_commands) == 0, f"Repository should be empty, but contains {len(all_commands)} commands"

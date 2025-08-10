@@ -95,3 +95,98 @@ class TestCommandSubmissionE2E:
         response_data = response.json()
         assert response_data["submission_successful"] is False
         assert "empty" in response_data["submission_message"].lower()
+        
+    def test_base64_encoded_command_submission(self, api_client, registered_client):
+        """Test submission and execution of base64 encoded commands"""
+        client_id = registered_client["client_id"]
+        
+        # Base64 encoded version of: echo "Message with 'single' and \"double\" quotes"
+        base64_command = "ZWNobyAiTWVzc2FnZSB3aXRoICdzaW5nbGUnIGFuZCBcImRvdWJsZVwiIHF1b3RlcyI="
+        
+        command_data = {
+            "target_client_id": client_id,
+            "command_content": base64_command,
+            "command_type": "shell",
+            "encoding": "base64"
+        }
+        
+        response = api_client.post("/commands/submit", json=command_data)
+        assert response.status_code == 200
+        
+        # Verify the command is stored correctly
+        commands_response = api_client.get(f"/commands/client/{client_id}")
+        assert commands_response.status_code == 200
+        
+        commands = commands_response.json()
+        assert len(commands) == 1
+        
+        command = commands[0]
+        assert command["encoding"] == "base64"
+        assert command["content"] == "echo \"Message with 'single' and \\\"double\\\" quotes\""
+        
+    def test_invalid_base64_command_submission(self, api_client, registered_client):
+        """Test handling of invalid base64 encoded commands"""
+        client_id = registered_client["client_id"]
+        
+        command_data = {
+            "target_client_id": client_id,
+            "command_content": "invalid-base64-string!!!",
+            "command_type": "shell", 
+            "encoding": "base64"
+        }
+        
+        response = api_client.post("/commands/submit", json=command_data)
+        assert response.status_code == 200
+        
+        response_data = response.json()
+        assert response_data["submission_successful"] is False
+        assert "base64" in response_data["submission_message"].lower()
+        
+    def test_base64_multiline_script_submission(self, api_client, registered_client):
+        """Test submission of base64 encoded multi-line scripts"""
+        client_id = registered_client["client_id"]
+        
+        # Base64 encoded multi-line script
+        multiline_script_b64 = "IyEvYmluL2Jhc2gKZWNobyAiU3RhcnRpbmcgc2NyaXB0Li4uIgpWQVI9InZhbHVlIHdpdGggJ3F1b3RlcyciCmVjaG8gIlZhcmlhYmxlOiAkVkFSIgplY2hvICJTY3JpcHQgY29tcGxldGVkIg=="
+        
+        command_data = {
+            "target_client_id": client_id,
+            "command_content": multiline_script_b64,
+            "command_type": "shell",
+            "encoding": "base64"
+        }
+        
+        response = api_client.post("/commands/submit", json=command_data)
+        assert response.status_code == 200
+        
+        # Verify the decoded command is stored correctly
+        commands_response = api_client.get(f"/commands/client/{client_id}")
+        commands = commands_response.json()
+        
+        assert len(commands) == 1
+        command = commands[0]
+        assert command["encoding"] == "base64"
+        assert "#!/bin/bash" in command["content"]
+        assert "echo \"Starting script...\"" in command["content"]
+        
+    def test_backward_compatibility_regular_commands(self, api_client, registered_client):
+        """Test that regular commands still work without encoding field"""
+        client_id = registered_client["client_id"]
+        
+        command_data = {
+            "target_client_id": client_id,
+            "command_content": "echo 'regular command'",
+            "command_type": "shell"
+            # No encoding field - should work as before
+        }
+        
+        response = api_client.post("/commands/submit", json=command_data)
+        assert response.status_code == 200
+        
+        commands_response = api_client.get(f"/commands/client/{client_id}")
+        commands = commands_response.json()
+        
+        assert len(commands) == 1
+        command = commands[0]
+        assert command.get("encoding") is None  # Should be None for regular commands
+        assert command["content"] == "echo 'regular command'"

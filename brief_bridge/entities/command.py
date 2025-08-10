@@ -11,6 +11,7 @@ class Command:
     content: str
     type: str = "shell"
     status: str = "pending"  # pending → processing → completed/failed
+    encoding: Optional[str] = None  # base64, None for regular commands
     created_at: Optional[datetime] = None
     
     # New fields for result handling
@@ -21,13 +22,14 @@ class Command:
     execution_time: Optional[float] = None  # Execution time in seconds
     
     @classmethod
-    def create_new_command(cls, target_client_id: str, content: str, command_type: str = "shell") -> "Command":
+    def create_new_command(cls, target_client_id: str, content: str, command_type: str = "shell", encoding: Optional[str] = None) -> "Command":
         """Business rule: command.unique_id - create new command with generated unique ID"""
         return cls(
             command_id=str(uuid.uuid4()),
             target_client_id=target_client_id,
             content=content,
             type=command_type,
+            encoding=encoding,
             status="pending",
             created_at=datetime.utcnow()
         )
@@ -61,7 +63,7 @@ class Command:
     
     def to_api_response(self) -> Dict[str, Any]:
         """Convert command to API response format"""
-        return {
+        response = {
             "command_id": self.command_id,
             "target_client_id": self.target_client_id,
             "content": self.content,
@@ -74,3 +76,6 @@ class Command:
             "error": self.error,
             "execution_time": self.execution_time
         }
+        if self.encoding:
+            response["encoding"] = self.encoding
+        return response

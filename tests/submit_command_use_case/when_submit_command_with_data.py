@@ -22,7 +22,8 @@ def invoke(ctx: ScenarioContext, command_data: str) -> None:
     submission_request = CommandSubmissionRequest(
         target_client_id=request_data["target_client_id"],
         command_content=request_data["command_content"],
-        command_type=request_data.get("command_type", "shell")
+        command_type=request_data.get("command_type", "shell"),
+        encoding=request_data.get("encoding", None)
     )
     
     # GREEN Stage 2: Real production invoke chain with simulated client execution

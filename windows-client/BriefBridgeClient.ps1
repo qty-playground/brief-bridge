@@ -7,6 +7,7 @@
 .DESCRIPTION
     A PowerShell client that connects to Brief Bridge server to receive and execute commands.
     Supports command polling, execution, and result reporting back to the server.
+    Features: base64 encoded commands, enhanced error handling, and comprehensive logging.
 
 .PARAMETER ServerUrl
     Brief Bridge server URL (default: http://localhost:8000)
@@ -178,10 +179,27 @@ function Invoke-Command {
     $commandId = $CommandObject.command_id
     $content = $CommandObject.content
     $type = $CommandObject.type
+    $encoding = $CommandObject.encoding
     
     Write-Log -Level "INFO" -Message "Executing command: $commandId"
     Write-Log -Level "DEBUG" -Message "Command content: $content"
     Write-Log -Level "DEBUG" -Message "Command type: $type"
+    
+    # Handle base64 encoded commands
+    if ($encoding -eq "base64") {
+        Write-Log -Level "DEBUG" -Message "Decoding base64 encoded command"
+        try {
+            $decodedBytes = [System.Convert]::FromBase64String($content)
+            $decodedContent = [System.Text.Encoding]::UTF8.GetString($decodedBytes)
+            $content = $decodedContent
+            Write-Log -Level "DEBUG" -Message "Decoded command content: $content"
+        }
+        catch {
+            Write-Log -Level "ERROR" -Message "Failed to decode base64 command: $($_.Exception.Message)"
+            Submit-CommandResult -CommandId $commandId -Output "" -Error "Invalid base64 encoding" -ExecutionTime 0.0 -Success $false
+            return
+        }
+    }
     
     $startTime = Get-Date
     $output = ""
@@ -325,7 +343,7 @@ function Start-CommandPolling {
 function Show-StartupBanner {
     Write-Host ""
     Write-Host "================================" -ForegroundColor Blue
-    Write-Host "  Brief Bridge Client v1.0.0" -ForegroundColor Blue  
+    Write-Host "  Brief Bridge Client v1.1.0" -ForegroundColor Blue  
     Write-Host "  Windows PowerShell 5.1" -ForegroundColor Blue
     Write-Host "================================" -ForegroundColor Blue
     Write-Host ""
