@@ -62,7 +62,6 @@ Feature: Tunnel Setup
     Then system should setup Cloudflare tunnel
     And provide stable public URL
 
-  @skip
   Scenario: Get current tunnel status
     Given tunnel is already setup and running
     When administrator queries tunnel status
