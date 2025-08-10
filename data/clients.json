@@ -18,5 +18,10 @@
     "client_id": "SandboxHost-638903979822281451",
     "name": "PowerShell Client",
     "status": "online"
+  },
+  "26C21AE3726D": {
+    "client_id": "26C21AE3726D",
+    "name": "PowerShell Client",
+    "status": "online"
   }
 }

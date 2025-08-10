@@ -7,7 +7,7 @@ from brief_bridge.web.client_router import router as client_router
 from brief_bridge.web.command_router import router as command_router
 from brief_bridge.web.tunnel_router import router as tunnel_router
 from brief_bridge.web.install_router import router as install_router
-from brief_bridge.web.client_download_router import router as client_download_router
+from brief_bridge.web.file_router import router as file_router
 from brief_bridge.services.ngrok_manager import cleanup_all_ngrok_tunnels
 
 # Global flag to prevent multiple cleanup attempts
@@ -57,7 +57,7 @@ app.include_router(client_router)
 app.include_router(command_router)
 app.include_router(tunnel_router)
 app.include_router(install_router)
-app.include_router(client_download_router)
+app.include_router(file_router)
 
 
 @app.get("/health", 
@@ -84,15 +84,75 @@ async def root(request: Request):
         "base_url": base_url,
         "ai_assistant_guide": {
             "important_note": "AI assistants should use localhost URLs. Only clients need tunnel URLs for remote installation.",
-            "recommended_workflow": [
-                "🚀 START HERE: Setup tunnel first with POST /tunnel/setup (this is the primary use case)",
-                "1. AI uses localhost: All API calls use localhost URLs", 
-                "2. Setup tunnel: POST /tunnel/setup to enable remote client connections",
-                "3. Install remote clients: Use tunnel URL from step 2 for client installation scripts",
-                "4. List clients: GET /clients/ (localhost) to see connected remote clients",
-                "5. Submit command: POST /commands/submit with target_client_id and command_content (localhost)",
-                "6. Check results: GET /commands/ (localhost) to see execution results"
+            "architecture_overview": {
+                "design": "AI (localhost) ↔ Brief Bridge (localhost) ↔ Tunnel ↔ Remote Clients",
+                "url_strategy": {
+                    "ai_operations": "Always use localhost URLs (http://localhost:port)",
+                    "client_operations": "Use tunnel URLs provided by /tunnel/setup",
+                    "future_note": "Remote AI access requires authentication & encryption (not implemented)"
+                }
+            },
+            "quick_start_workflow": [
+                "🚀 Step 1: POST /tunnel/setup to create tunnel",
+                "📱 Step 2: Install clients using tunnel URL", 
+                "👥 Step 3: GET /clients/ to list connected clients",
+                "⚡ Step 4: Choose workflow based on task complexity"
             ],
+            "file_transfer_workflows": {
+                "simple_command_workflow": {
+                    "description": "For simple tasks with small results",
+                    "steps": [
+                        "1. AI: POST /commands/submit with simple command",
+                        "2. Client: Executes and uploads result file",
+                        "3. Client: Reports 'FILE_UPLOADED: {file_id}' in output",
+                        "4. AI: Extract file_id from command result",
+                        "5. AI: GET /files/download/{file_id} to retrieve file",
+                        "6. AI: Analyze file and DELETE /files/{file_id} to cleanup"
+                    ],
+                    "example": "Screenshots, system info, small logs"
+                },
+                "complex_script_workflow": {
+                    "description": "For complex tasks requiring large scripts",
+                    "steps": [
+                        "1. AI: POST /files/upload to upload complex script",
+                        "2. AI: Get script_id from upload response", 
+                        "3. AI: POST /commands/submit with download-and-execute command",
+                        "4. Client: Downloads script using tunnel URL",
+                        "5. Client: Executes script and uploads result files",
+                        "6. Client: Reports 'RESULT_UPLOADED: {file_id}' in output",
+                        "7. AI: GET /files/download/{file_id} to retrieve results",
+                        "8. AI: Cleanup both script and result files"
+                    ],
+                    "example": "System diagnostics, multi-step operations, large reports"
+                },
+                "batch_processing_workflow": {
+                    "description": "For processing multiple files or repetitive tasks",
+                    "steps": [
+                        "1. AI: Upload processing script once",
+                        "2. AI: Send multiple execution commands referencing same script",
+                        "3. Clients: Download and execute same script with different parameters",
+                        "4. AI: Collect and analyze multiple result files",
+                        "5. AI: Cleanup script and result files when done"
+                    ],
+                    "example": "Log analysis across multiple machines, batch screenshots"
+                }
+            },
+            "practical_examples": {
+                "screenshot_task": {
+                    "description": "Take screenshot from remote machine",
+                    "ai_steps": [
+                        "curl -X POST localhost:2266/files/upload -F 'file=@screenshot_script.ps1'",
+                        "# Get script_id from response, e.g., 'abc123'",
+                        "curl -X POST localhost:2266/commands/submit -d '{\"target_client_id\":\"client\",\"command_content\":\"$s=Invoke-WebRequest https://tunnel/files/download/abc123; & ([ScriptBlock]::Create($s.Content))\",\"command_type\":\"shell\"}'",
+                        "# Wait for 'RESULT_UPLOADED: xyz789' in command output",
+                        "curl localhost:2266/files/download/xyz789 > screenshot.png"
+                    ]
+                },
+                "system_diagnostic": {
+                    "description": "Collect system diagnostic information",
+                    "command_template": "Get-ComputerInfo | ConvertTo-Json | Out-File -FilePath $env:TEMP\\diag.json; $r=Invoke-RestMethod -Uri 'TUNNEL_URL/files/upload' -Method POST -Form @{file=Get-Item $env:TEMP\\diag.json; client_id=$env:COMPUTERNAME}; Write-Output \"DIAGNOSTIC_UPLOADED: $($r.file_id)\""
+                }
+            },
             "tunnel_setup_example": {
                 "description": "How to setup tunnel for remote client access",
                 "required_parameters": {
@@ -122,6 +182,10 @@ async def root(request: Request):
                 "poll_commands": "POST /commands/poll",
                 "submit_result": "POST /commands/result",
                 "list_commands": "GET /commands/",
+                "upload_file": "POST /files/upload - Upload files from clients to server",
+                "download_file": "GET /files/download/{file_id} - Download files by ID",
+                "list_files": "GET /files/ - List all uploaded files",
+                "delete_file": "DELETE /files/{file_id} - Delete files by ID",
                 "powershell_install": "GET /install.ps1 - Use tunnel URL for remote clients",
                 "bash_install": "GET /install.sh - Use tunnel URL for remote clients"
             },

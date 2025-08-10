@@ -165,31 +165,12 @@ function Register-Client {
 function Invoke-PowerShellCommand {
     param(
         [string]$Command,
-        [string]$Encoding = "",
         [int]$TimeoutSeconds = 30
     )
     
     $startTime = Get-Date
     
     try {
-        # Handle base64 encoded commands
-        if ($Encoding -eq "base64") {
-            Write-Host "[DECODE] Decoding base64 command" -ForegroundColor Cyan
-            try {
-                $decodedBytes = [System.Convert]::FromBase64String($Command)
-                $Command = [System.Text.Encoding]::UTF8.GetString($decodedBytes)
-                Write-Host "[DECODE] Successfully decoded base64 command" -ForegroundColor Green
-            }
-            catch {
-                Write-Host "[ERROR] Failed to decode base64: $($_.Exception.Message)" -ForegroundColor Red
-                return @{
-                    success = $false
-                    output = $null
-                    error = "Invalid base64 encoding"
-                    execution_time = 0.0
-                }
-            }
-        }
         
         Write-Host "[EXEC] $Command" -ForegroundColor Yellow
         
@@ -292,9 +273,8 @@ try {
                 # Reset error counter on successful poll
                 $consecutiveErrors = 0
                 
-                # Execute the command with encoding support
-                $encoding = if ($command.encoding) { $command.encoding } else { "" }
-                $result = Invoke-PowerShellCommand -Command $command.command_content -Encoding $encoding -TimeoutSeconds $command.timeout
+                # Execute the command
+                $result = Invoke-PowerShellCommand -Command $command.command_content -TimeoutSeconds $command.timeout
                 
                 # Submit the result
                 $submitted = Submit-CommandResult -CommandId $command.command_id -Result $result

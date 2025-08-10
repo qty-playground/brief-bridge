@@ -125,13 +125,54 @@
             Only remote clients need tunnel URLs for installation.
         </div>
         
-        <h3>Core Workflow:</h3>
-        <ol>
-            <li><strong>Setup Tunnel</strong> - Create ngrok tunnel for external access</li>
-            <li><strong>Install Client</strong> - Deploy one-click install script to target machines</li>
-            <li><strong>Submit Commands</strong> - Send commands to registered clients</li>
-            <li><strong>Monitor Results</strong> - Track execution status and retrieve outputs</li>
-        </ol>
+        <h3>Architecture Design:</h3>
+        <div style="background: #f0f8ff; padding: 15px; border-radius: 6px; margin: 10px 0;">
+            <strong>AI (localhost) ↔ Brief Bridge (localhost) ↔ Tunnel ↔ Remote Clients</strong><br>
+            • AI: Always use localhost URLs<br>
+            • Clients: Use tunnel URLs for upload/download
+        </div>
+
+        <h3>Three Main Workflows:</h3>
+        
+        <div class="grid" style="grid-template-columns: 1fr; gap: 15px; margin: 20px 0;">
+            <div style="background: #f9f9f9; padding: 15px; border-radius: 6px; border-left: 4px solid #28a745;">
+                <h4>🚀 1. Simple Command Workflow</h4>
+                <p><strong>Use for:</strong> Screenshots, system info, small logs</p>
+                <ol style="font-size: 14px;">
+                    <li>AI sends simple command via POST /commands/submit</li>
+                    <li>Client executes and uploads result file</li>
+                    <li>Client reports "FILE_UPLOADED: {file_id}" in output</li>
+                    <li>AI extracts file_id and downloads via GET /files/download/{file_id}</li>
+                    <li>AI analyzes file and cleans up with DELETE /files/{file_id}</li>
+                </ol>
+            </div>
+            
+            <div style="background: #f9f9f9; padding: 15px; border-radius: 6px; border-left: 4px solid #007bff;">
+                <h4>⚡ 2. Complex Script Workflow</h4>
+                <p><strong>Use for:</strong> System diagnostics, multi-step operations, large reports</p>
+                <ol style="font-size: 14px;">
+                    <li>AI uploads complex script via POST /files/upload</li>
+                    <li>AI gets script_id from upload response</li>
+                    <li>AI sends download-and-execute command</li>
+                    <li>Client downloads script using tunnel URL</li>
+                    <li>Client executes script and uploads result files</li>
+                    <li>Client reports "RESULT_UPLOADED: {file_id}" in output</li>
+                    <li>AI downloads results and cleans up both script and result files</li>
+                </ol>
+            </div>
+            
+            <div style="background: #f9f9f9; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107;">
+                <h4>🔄 3. Batch Processing Workflow</h4>
+                <p><strong>Use for:</strong> Multi-machine log analysis, batch screenshots</p>
+                <ol style="font-size: 14px;">
+                    <li>AI uploads processing script once</li>
+                    <li>AI sends multiple execution commands referencing same script</li>
+                    <li>Multiple clients download and execute same script</li>
+                    <li>AI collects and analyzes multiple result files</li>
+                    <li>AI cleans up script and result files when done</li>
+                </ol>
+            </div>
+        </div>
 
         <h3>Quick Start Commands:</h3>
         <div class="code">
@@ -211,6 +252,26 @@ curl {{BASE_URL}}/commands/
                 Bash one-click install script (placeholder)
             </div>
         </div>
+
+        <div class="card">
+            <h3>📁 File Management</h3>
+            <div class="endpoint">
+                <span class="method">POST</span> <span class="url">/files/upload</span><br>
+                Upload files from clients to server
+            </div>
+            <div class="endpoint">
+                <span class="method">GET</span> <span class="url">/files/download/{file_id}</span><br>
+                Download files by ID
+            </div>
+            <div class="endpoint">
+                <span class="method">GET</span> <span class="url">/files/</span><br>
+                List all uploaded files
+            </div>
+            <div class="endpoint">
+                <span class="method">DELETE</span> <span class="url">/files/{file_id}</span><br>
+                Delete files by ID
+            </div>
+        </div>
     </div>
 
     <div class="section">
@@ -241,6 +302,23 @@ curl -X POST {{BASE_URL}}/commands/submit \
 curl -X POST {{BASE_URL}}/commands/submit \
   -H "Content-Type: application/json" \
   -d '{"target_client_id": "your-client", "command_content": "Get-Process | Sort-Object CPU -Descending | Select-Object -First 10", "command_type": "shell"}'
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>📸 File Transfer Workflow</h3>
+                <div class="code">
+# 1. Client takes screenshot and uploads
+# PowerShell script executed on remote client uploads file
+
+# 2. AI retrieves file list
+curl {{BASE_URL}}/files/
+
+# 3. AI downloads specific file
+curl {{BASE_URL}}/files/download/{file_id} > screenshot.png
+
+# 4. AI analyzes file and cleans up
+curl -X DELETE {{BASE_URL}}/files/{file_id}
                 </div>
             </div>
         </div>
