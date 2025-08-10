@@ -6,7 +6,7 @@ on:
       command_to_execute:
         description: 'PowerShell command to execute on the Windows client'
         required: true
-        default: 'Write-Host "No command provided."
+        default: 'Write-Host "No command provided."'
 
 jobs:
   run-powershell-command:
