@@ -13,14 +13,36 @@ You're developing on macOS with Claude Code, but need to write PowerShell 5.1 co
 
 ## Quick Start
 
-**Windows**
-```powershell
-& ([scriptblock]::Create((Invoke-WebRequest 'https://your-endpoint.com/client.ps1').Content))
+### Installation with pipx (Recommended)
+
+```bash
+pipx install brief-bridge
 ```
 
-**Linux/macOS**
+### Start the Server
+
 ```bash
-curl -sSL https://your-endpoint.com/client.sh | bash
+brief-bridge
+```
+
+This will start Brief Bridge on port 2266 with helpful guidance for AI assistants.
+
+### For AI Assistants
+
+Tell your AI assistant: **"Please visit http://localhost:2266/ to see what APIs are available"**
+
+**Important**: AI assistants should use `localhost` URLs for all API calls. Only remote clients need tunnel URLs for installation.
+
+### Client Installation
+
+**Windows PowerShell**
+```powershell
+irm http://localhost:2266/install.ps1 | iex
+```
+
+**Linux/macOS Bash**
+```bash
+curl -sSL http://localhost:2266/install.sh | bash
 ```
 
 ## What it does
@@ -68,10 +90,22 @@ Brief Bridge supports **two architecture approaches** for implementation:
 ## API
 
 ```bash
-GET  /                    # Usage instructions
-POST /commands           # Submit command  
-GET  /commands/{id}      # Get result
-GET  /clients            # List clients
+GET  /                     # Complete API guide for AI assistants
+GET  /docs                 # Interactive Swagger documentation
+POST /tunnel/setup         # Setup ngrok tunnel  
+POST /commands/submit      # Submit command to client
+GET  /commands/            # List all commands and results
+GET  /clients/             # List registered clients
+GET  /install.ps1          # PowerShell client install script
+```
+
+### CLI Options
+
+```bash
+brief-bridge --help        # Show all options
+brief-bridge --port 8080   # Custom port
+brief-bridge --external    # Accept external connections
+brief-bridge --reload      # Development mode with auto-reload
 ```
 
 ## Use Cases

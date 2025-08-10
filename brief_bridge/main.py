@@ -79,11 +79,13 @@ async def root(request: Request):
         "status": "active",
         "base_url": base_url,
         "ai_assistant_guide": {
+            "important_note": "AI assistants should use localhost URLs. Only clients need tunnel URLs for remote installation.",
             "workflow": [
-                "1. Setup tunnel: POST /tunnel/setup with {\"provider\": \"ngrok\"}",
-                "2. List clients: GET /clients/",
-                "3. Submit command: POST /commands/submit with {\"target_client_id\": \"...\", \"command_content\": \"...\"}",
-                "4. Check results: GET /commands/"
+                "1. AI uses localhost: All API calls use localhost URLs",
+                "2. For remote clients: Setup tunnel first with POST /tunnel/setup",
+                "3. List clients: GET /clients/ (localhost)",
+                "4. Submit command: POST /commands/submit with target_client_id and command_content (localhost)",
+                "5. Check results: GET /commands/ (localhost)"
             ],
             "key_endpoints": {
                 "tunnel_setup": "POST /tunnel/setup",

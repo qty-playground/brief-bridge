@@ -13,5 +13,10 @@
     "client_id": "test-laptop-001",
     "name": "Test Laptop",
     "status": "online"
+  },
+  "SandboxHost-638903979822281451": {
+    "client_id": "SandboxHost-638903979822281451",
+    "name": "PowerShell Client",
+    "status": "online"
   }
 }
