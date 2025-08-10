@@ -1,0 +1,13 @@
+"""Given administrator has custom domain and SSL certificate - Screaming Architecture naming"""
+from conftest import ScenarioContext, BDDPhase
+
+def invoke(ctx: ScenarioContext) -> None:
+    """
+    Business rule: tunnel.custom_domain - setup custom domain configuration
+    Command Pattern implementation for BDD step
+    """
+    # Phase already set by wrapper function
+    # Configure custom domain and SSL certificate
+    
+    # GREEN Stage 1: Hardcoded fake implementation
+    raise NotImplementedError("Custom domain configuration not implemented")
