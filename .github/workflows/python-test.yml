@@ -18,3 +18,6 @@ jobs:
         pip install pytest pytest-bdd
     - name: Run tests
       run: pytest -vvs
+      env:
+        BRIEF_BRIDGE_TEST_TIMEOUT: 2.5
+        BRIEF_BRIDGE_USE_MOCK_NGROK: true
