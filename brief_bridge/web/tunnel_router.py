@@ -12,7 +12,7 @@ class TunnelSetupRequest(BaseModel):
     """Request schema for tunnel setup"""
     provider: str = Field(
         description="Tunnel provider name. Currently supported: 'ngrok'",
-        example="ngrok"
+        json_schema_extra={"example": "ngrok"}
     )
     auth_token: Optional[str] = Field(
         None, 
