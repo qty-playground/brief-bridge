@@ -1,7 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import signal
 import asyncio
+import os
 from brief_bridge.web.client_router import router as client_router
 from brief_bridge.web.command_router import router as command_router
 from brief_bridge.web.tunnel_router import router as tunnel_router
@@ -25,10 +28,14 @@ def signal_handler(signum, frame):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup - register signal handlers
-    signal.signal(signal.SIGTERM, signal_handler)
-    signal.signal(signal.SIGINT, signal_handler)
-    print("🚀 Brief Bridge started - ngrok cleanup handlers registered")
+    # Startup - register signal handlers (only in main thread)
+    try:
+        signal.signal(signal.SIGTERM, signal_handler)
+        signal.signal(signal.SIGINT, signal_handler)
+        print("🚀 Brief Bridge started - ngrok cleanup handlers registered")
+    except ValueError as e:
+        # Signal handling not available in tests
+        print(f"🔄 Signal handlers not registered (test environment): {e}")
     
     yield
     
@@ -44,6 +51,11 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Mount static files
+static_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
+if os.path.exists(static_path):
+    app.mount("/static", StaticFiles(directory=static_path), name="static")
+
 # 包含路由
 app.include_router(client_router)
 app.include_router(command_router)
@@ -57,5 +69,41 @@ async def health_check():
 
 
 @app.get("/")
-async def root():
-    return {"message": "Brief Bridge API"}
+async def root(request: Request):
+    """Brief Bridge API - Simple JSON guide for AI assistants"""
+    base_url = f"{request.url.scheme}://{request.url.netloc}"
+    
+    return {
+        "service": "Brief Bridge",
+        "description": "Remote command execution bridge for AI coding assistants",
+        "status": "active",
+        "base_url": base_url,
+        "ai_assistant_guide": {
+            "workflow": [
+                "1. Setup tunnel: POST /tunnel/setup with {\"provider\": \"ngrok\"}",
+                "2. List clients: GET /clients/",
+                "3. Submit command: POST /commands/submit with {\"target_client_id\": \"...\", \"command_content\": \"...\"}",
+                "4. Check results: GET /commands/"
+            ],
+            "key_endpoints": {
+                "tunnel_setup": "POST /tunnel/setup",
+                "list_clients": "GET /clients/",
+                "submit_command": "POST /commands/submit", 
+                "poll_commands": "POST /commands/poll",
+                "submit_result": "POST /commands/result",
+                "list_commands": "GET /commands/",
+                "powershell_install": "GET /install.ps1"
+            },
+            "example_command": f"curl -X POST {base_url}/commands/submit -H \"Content-Type: application/json\" -d '{{\"target_client_id\": \"your-client\", \"command_content\": \"Get-Date\", \"command_type\": \"shell\"}}'"
+        },
+        "documentation": {
+            "full_guide": f"{base_url}/static/index.html",
+            "swagger_docs": f"{base_url}/docs",
+            "health_check": f"{base_url}/health"
+        },
+        "quick_links": {
+            "clients": f"{base_url}/clients/",
+            "commands": f"{base_url}/commands/",
+            "tunnel_status": f"{base_url}/tunnel/status"
+        }
+    }

@@ -82,4 +82,7 @@ def test_system_health_and_api_availability(client):
     # API availability verification
     api_root_response = client.get("/")
     assert api_root_response.status_code == 200
-    assert api_root_response.json()["message"] == "Brief Bridge API"
+    response_data = api_root_response.json()
+    assert response_data["service"] == "Brief Bridge"
+    assert response_data["status"] == "active"
+    assert "ai_assistant_guide" in response_data
