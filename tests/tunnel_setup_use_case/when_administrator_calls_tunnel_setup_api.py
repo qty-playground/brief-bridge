@@ -10,5 +10,19 @@ def invoke(ctx: ScenarioContext, request_body: str) -> None:
     # Phase already set by wrapper function
     # Parse request body and execute tunnel setup
     
-    # GREEN Stage 1: Hardcoded fake implementation
-    raise NotImplementedError("Tunnel setup API call not implemented")
+    # GREEN Stage 1: Call real production code
+    from brief_bridge.use_cases.tunnel_setup_use_case import TunnelSetupUseCase
+    import json
+    import asyncio
+    
+    request_data = json.loads(request_body)
+    use_case = TunnelSetupUseCase()
+    
+    # Execute tunnel setup through production use case
+    result = asyncio.run(use_case.setup_tunnel(
+        provider=request_data["provider"],
+        config=request_data.get("config", {})
+    ))
+    
+    # Store result for verification
+    ctx.tunnel_setup_response = result

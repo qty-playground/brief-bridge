@@ -9,5 +9,6 @@ def invoke(ctx: ScenarioContext) -> None:
     # Phase already set by wrapper function
     # Assert tunnel service is active
     
-    # GREEN Stage 1: Hardcoded fake implementation
-    raise NotImplementedError("Tunnel service start verification not implemented")
+    # GREEN Stage 1: Verify tunnel service started
+    assert hasattr(ctx, "tunnel_setup_response"), "Tunnel setup response not found"
+    assert ctx.tunnel_setup_response["status"] == "active", f"Expected tunnel status 'active', got {ctx.tunnel_setup_response['status']}"
