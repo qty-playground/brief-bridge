@@ -147,28 +147,37 @@ async def cleanup_all_ngrok_tunnels():
     try:
         if os.getenv('BRIEF_BRIDGE_USE_MOCK_NGROK', '').lower() in ('true', '1', 'yes'):
             # Skip cleanup in mock mode
+            logger.info("Skipping ngrok cleanup in mock mode")
             return
             
-        # Kill all tunnels
-        loop = asyncio.get_event_loop()
-        tunnels = await loop.run_in_executor(None, ngrok.get_tunnels)
+        # Use system commands to kill ngrok processes instead of ngrok API
+        # This avoids starting new ngrok processes during cleanup
+        import subprocess
         
-        for tunnel in tunnels:
-            try:
-                await loop.run_in_executor(None, ngrok.disconnect, tunnel.public_url)
-                logger.info(f"Cleaned up tunnel: {tunnel.public_url}")
-            except Exception as e:
-                logger.warning(f"Failed to cleanup tunnel {tunnel.public_url}: {e}")
-        
-        # Kill ngrok process
         try:
-            await loop.run_in_executor(None, ngrok.kill)
-            logger.info("Ngrok process terminated")
+            # Kill all ngrok processes
+            subprocess.run(['pkill', '-f', 'ngrok'], check=False)
+            logger.info("Ngrok processes terminated via pkill")
         except Exception as e:
-            logger.warning(f"Failed to kill ngrok process: {e}")
+            logger.warning(f"Failed to kill ngrok processes via pkill: {e}")
+            
+        # Also try to use ngrok API for graceful cleanup if available
+        try:
+            loop = asyncio.get_event_loop()
+            tunnels = await loop.run_in_executor(None, ngrok.get_tunnels)
+            
+            for tunnel in tunnels:
+                try:
+                    await loop.run_in_executor(None, ngrok.disconnect, tunnel.public_url)
+                    logger.info(f"Gracefully disconnected tunnel: {tunnel.public_url}")
+                except Exception as e:
+                    logger.debug(f"Could not gracefully disconnect tunnel {tunnel.public_url}: {e}")
+                    
+        except Exception as e:
+            logger.debug(f"Could not use ngrok API for cleanup: {e}")
             
     except Exception as e:
-        logger.warning(f"Failed to cleanup ngrok tunnels: {e}")
+        logger.warning(f"Error during ngrok cleanup: {e}")
 
 
 def create_ngrok_manager(use_mock: bool = None) -> NgrokManager:

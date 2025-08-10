@@ -30,7 +30,7 @@ $ServerUrl = "{self.server_url}"
 $ClientId = "{client_id or '$env:COMPUTERNAME'}"
 $ClientName = "{client_name or 'PowerShell Client'}"
 $PollInterval = {poll_interval}
-$Debug = ${str(debug).lower()}
+$DebugMode = ${str(debug).lower()}
 
 # Download client script to temp location (cross-platform path)
 if ($IsLinux -or $IsMacOS) {{
@@ -57,8 +57,8 @@ Write-Host "Using PowerShell executable: $PowerShellExe" -ForegroundColor Yellow
 
 # Execute client
 Write-Host "Starting Brief Bridge client..." -ForegroundColor Green
-if ($Debug) {{
-    & $PowerShellExe -ExecutionPolicy Bypass -File $TempPath -ServerUrl $ServerUrl -ClientId $ClientId -ClientName "$ClientName" -PollInterval $PollInterval -Debug
+if ($DebugMode -eq "true") {{
+    & $PowerShellExe -ExecutionPolicy Bypass -File $TempPath -ServerUrl $ServerUrl -ClientId $ClientId -ClientName "$ClientName" -PollInterval $PollInterval -DebugMode
 }} else {{
     & $PowerShellExe -ExecutionPolicy Bypass -File $TempPath -ServerUrl $ServerUrl -ClientId $ClientId -ClientName "$ClientName" -PollInterval $PollInterval
 }}
@@ -123,7 +123,7 @@ param(
     [Parameter(Mandatory=$true)][string]$ClientId,
     [string]$ClientName = "",
     [int]$PollInterval = 5,
-    [switch]$Debug
+    [switch]$DebugMode
 )
 
 Write-Host "Brief Bridge Client Starting..." -ForegroundColor Green
