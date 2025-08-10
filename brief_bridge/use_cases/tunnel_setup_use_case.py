@@ -9,9 +9,10 @@ from ..services.ngrok_manager import NgrokManager, create_ngrok_manager
 class TunnelSetupUseCase:
     """Use case for setting up tunnel connections"""
     
-    def __init__(self, ngrok_manager: Optional[NgrokManager] = None):
+    def __init__(self, ngrok_manager: Optional[NgrokManager] = None, server_port: Optional[int] = None):
         self.active_tunnel = None
-        self.ngrok_manager = ngrok_manager or create_ngrok_manager()
+        self.server_port = server_port
+        self.ngrok_manager = ngrok_manager or create_ngrok_manager(port=server_port)
         
     async def setup_tunnel(self, provider: str, config: Dict[str, Any] = None) -> Dict[str, Any]:
         """Set up a tunnel with specified provider"""
@@ -79,7 +80,13 @@ class TunnelSetupUseCase:
             "status": tunnel.status,
             "public_url": tunnel.public_url,
             "provider": tunnel.provider,
-            "install_urls": tunnel.get_install_urls()
+            "install_urls": tunnel.get_install_urls(),
+            "remote_client_installation": {
+                "instructions": "Use these commands on remote machines to install Brief Bridge clients:",
+                "commands": tunnel.get_install_commands(),
+                "powershell_direct": f"irm {tunnel.public_url}/install.ps1 | iex",
+                "bash_direct": f"curl -sSL {tunnel.public_url}/install.sh | bash"
+            }
         }
         
     async def get_tunnel_status(self) -> Dict[str, Any]:

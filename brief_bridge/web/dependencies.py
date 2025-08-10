@@ -2,7 +2,9 @@ from brief_bridge.repositories.client_repository import ClientRepository, FileBa
 from brief_bridge.repositories.command_repository import CommandRepository, FileBasedCommandRepository
 from brief_bridge.use_cases.register_client_use_case import RegisterClientUseCase
 from brief_bridge.use_cases.submit_command_use_case import SubmitCommandUseCase
-from fastapi import Depends
+from brief_bridge.use_cases.tunnel_setup_use_case import TunnelSetupUseCase
+from fastapi import Depends, Request
+import os
 
 # File-based repository instances for persistent storage
 _client_repository_instance: ClientRepository = FileBasedClientRepository()
@@ -32,3 +34,10 @@ def get_submit_command_use_case(
 ) -> SubmitCommandUseCase:
     """FastAPI dependency: Submit command use case with repository injection"""
     return SubmitCommandUseCase(client_repository, command_repository)
+
+
+def get_tunnel_setup_use_case(request: Request) -> TunnelSetupUseCase:
+    """FastAPI dependency: Tunnel setup use case with dynamic port detection"""
+    # Get the actual server port from the request
+    server_port = request.url.port
+    return TunnelSetupUseCase(server_port=server_port)

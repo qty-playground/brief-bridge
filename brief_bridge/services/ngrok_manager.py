@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 class NgrokManager:
     """Manages ngrok tunnel lifecycle and provides public URL."""
     
-    def __init__(self, port: int = 8000, auth_token: Optional[str] = None):
-        self.port = port
+    def __init__(self, port: Optional[int] = None, auth_token: Optional[str] = None):
+        self.port = port  # Will be dynamically determined if None
         self.tunnel = None
         self.public_url: Optional[str] = None
         
@@ -24,16 +24,57 @@ class NgrokManager:
             conf.get_default().auth_token = os.getenv("NGROK_AUTHTOKEN")
         # If no explicit token, pyngrok will use the system config
     
+    def _get_server_port(self) -> int:
+        """Dynamically determine the current server port"""
+        if self.port:
+            return self.port
+            
+        # Try to get port from environment variable
+        env_port = os.getenv("BRIEF_BRIDGE_PORT")
+        if env_port:
+            return int(env_port)
+            
+        # Try to detect from running uvicorn process
+        try:
+            import psutil
+            import re
+            
+            for process in psutil.process_iter(['pid', 'name', 'cmdline']):
+                try:
+                    if process.info['name'] and 'python' in process.info['name'].lower():
+                        cmdline = ' '.join(process.info['cmdline'] or [])
+                        if 'uvicorn' in cmdline and 'brief_bridge.main:app' in cmdline:
+                            # Look for --port argument
+                            port_match = re.search(r'--port\s+(\d+)', cmdline)
+                            if port_match:
+                                return int(port_match.group(1))
+                            # Look for :port pattern
+                            host_port_match = re.search(r'127\.0\.0\.1:(\d+)', cmdline)
+                            if host_port_match:
+                                return int(host_port_match.group(1))
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
+        except ImportError:
+            logger.warning("psutil not available, cannot auto-detect port")
+        except Exception as e:
+            logger.warning(f"Failed to auto-detect port: {e}")
+            
+        # Default fallback
+        logger.warning("Could not detect server port, using default 2266")
+        return 2266
+    
     async def start_tunnel(self) -> str:
         """Start ngrok tunnel and return public URL."""
         try:
-            logger.info(f"Starting ngrok tunnel for port {self.port}")
+            # Dynamically determine port
+            actual_port = self._get_server_port()
+            logger.info(f"Starting ngrok tunnel for port {actual_port}")
             
             # Start tunnel in a thread to avoid blocking
             loop = asyncio.get_event_loop()
             self.tunnel = await loop.run_in_executor(
                 None, 
-                lambda: ngrok.connect(self.port, "http")
+                lambda: ngrok.connect(actual_port, "http")
             )
             
             self.public_url = self.tunnel.public_url
@@ -104,8 +145,8 @@ class NgrokManager:
 class MockNgrokManager:
     """Mock ngrok manager for testing purposes"""
     
-    def __init__(self, port: int = 8000, auth_token: Optional[str] = None):
-        self.port = port
+    def __init__(self, port: Optional[int] = None, auth_token: Optional[str] = None):
+        self.port = port or 2266  # Default for mock
         self.public_url: Optional[str] = None
         self._is_active = False
     
@@ -180,13 +221,13 @@ async def cleanup_all_ngrok_tunnels():
         logger.warning(f"Error during ngrok cleanup: {e}")
 
 
-def create_ngrok_manager(use_mock: bool = None) -> NgrokManager:
+def create_ngrok_manager(use_mock: bool = None, port: Optional[int] = None) -> NgrokManager:
     """Factory function to create ngrok manager"""
     # Auto-detect if we should use mock (for testing)
     if use_mock is None:
         use_mock = os.getenv('BRIEF_BRIDGE_USE_MOCK_NGROK', '').lower() in ('true', '1', 'yes')
     
     if use_mock:
-        return MockNgrokManager()
+        return MockNgrokManager(port=port)
     else:
-        return NgrokManager()
+        return NgrokManager(port=port)

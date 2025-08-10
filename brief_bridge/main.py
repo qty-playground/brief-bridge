@@ -80,21 +80,25 @@ async def root(request: Request):
         "base_url": base_url,
         "ai_assistant_guide": {
             "important_note": "AI assistants should use localhost URLs. Only clients need tunnel URLs for remote installation.",
-            "workflow": [
-                "1. AI uses localhost: All API calls use localhost URLs",
-                "2. For remote clients: Setup tunnel first with POST /tunnel/setup",
-                "3. List clients: GET /clients/ (localhost)",
-                "4. Submit command: POST /commands/submit with target_client_id and command_content (localhost)",
-                "5. Check results: GET /commands/ (localhost)"
+            "recommended_workflow": [
+                "🚀 START HERE: Setup tunnel first with POST /tunnel/setup (this is the primary use case)",
+                "1. AI uses localhost: All API calls use localhost URLs", 
+                "2. Setup tunnel: POST /tunnel/setup to enable remote client connections",
+                "3. Install remote clients: Use tunnel URL from step 2 for client installation scripts",
+                "4. List clients: GET /clients/ (localhost) to see connected remote clients",
+                "5. Submit command: POST /commands/submit with target_client_id and command_content (localhost)",
+                "6. Check results: GET /commands/ (localhost) to see execution results"
             ],
             "key_endpoints": {
-                "tunnel_setup": "POST /tunnel/setup",
+                "tunnel_setup": "POST /tunnel/setup - ⭐ CRITICAL FIRST STEP for remote usage",
+                "tunnel_status": "GET /tunnel/status - Check tunnel connection status",
                 "list_clients": "GET /clients/",
                 "submit_command": "POST /commands/submit", 
                 "poll_commands": "POST /commands/poll",
                 "submit_result": "POST /commands/result",
                 "list_commands": "GET /commands/",
-                "powershell_install": "GET /install.ps1"
+                "powershell_install": "GET /install.ps1 - Use tunnel URL for remote clients",
+                "bash_install": "GET /install.sh - Use tunnel URL for remote clients"
             },
             "example_command": f"curl -X POST {base_url}/commands/submit -H \"Content-Type: application/json\" -d '{{\"target_client_id\": \"your-client\", \"command_content\": \"Get-Date\", \"command_type\": \"shell\"}}'"
         },
