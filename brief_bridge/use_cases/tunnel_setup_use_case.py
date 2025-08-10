@@ -1,28 +1,30 @@
 """Tunnel setup use case for managing tunnel connections"""
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from datetime import datetime
 import uuid
 from ..entities.tunnel import Tunnel
+from ..services.ngrok_manager import NgrokManager, create_ngrok_manager
 
 
 class TunnelSetupUseCase:
     """Use case for setting up tunnel connections"""
     
-    def __init__(self):
+    def __init__(self, ngrok_manager: Optional[NgrokManager] = None):
         self.active_tunnel = None
+        self.ngrok_manager = ngrok_manager or create_ngrok_manager()
         
     async def setup_tunnel(self, provider: str, config: Dict[str, Any] = None) -> Dict[str, Any]:
         """Set up a tunnel with specified provider"""
         config = config or {}
         
         # Business rule: tunnel.setup - deactivate existing tunnel
-        self._deactivate_existing_tunnel()
+        await self._deactivate_existing_tunnel()
         
         # Business rule: tunnel.provider_validation - validate provider
         self._validate_provider(provider)
         
         # Business rule: tunnel.url_generation - generate URL based on provider
-        public_url = self._generate_public_url(provider, config)
+        public_url = await self._generate_public_url(provider, config)
         
         # Business rule: tunnel.lifecycle - create and activate tunnel
         tunnel = self._create_and_activate_tunnel(provider, public_url, config)
@@ -32,9 +34,12 @@ class TunnelSetupUseCase:
         # Business rule: tunnel.response - return structured tunnel information
         return self._build_setup_response(tunnel)
     
-    def _deactivate_existing_tunnel(self) -> None:
+    async def _deactivate_existing_tunnel(self) -> None:
         """Deactivate existing tunnel before setting up new one"""
         if self.active_tunnel:
+            # Stop the ngrok tunnel first
+            await self.ngrok_manager.stop_tunnel()
+            # Then deactivate the tunnel entity
             self.active_tunnel.deactivate()
     
     def _validate_provider(self, provider: str) -> None:
@@ -43,17 +48,16 @@ class TunnelSetupUseCase:
         if provider not in supported_providers:
             raise ValueError(f"Unsupported provider: {provider}. Supported: {supported_providers}")
     
-    def _generate_public_url(self, provider: str, config: Dict[str, Any]) -> str:
+    async def _generate_public_url(self, provider: str, config: Dict[str, Any]) -> str:
         """Generate public URL based on provider type"""
         if provider == "ngrok":
-            return self._generate_ngrok_url()
+            return await self._generate_ngrok_url()
         else:
             raise ValueError(f"URL generation not implemented for provider: {provider}")
     
-    def _generate_ngrok_url(self) -> str:
-        """Generate ngrok tunnel URL"""
-        subdomain = str(uuid.uuid4())[:8]
-        return f"https://{subdomain}.ngrok.io"
+    async def _generate_ngrok_url(self) -> str:
+        """Generate ngrok tunnel URL using real ngrok manager"""
+        return await self.ngrok_manager.start_tunnel()
     
     
     def _create_and_activate_tunnel(self, provider: str, public_url: str, config: Dict[str, Any]) -> Tunnel:
@@ -121,3 +125,14 @@ class TunnelSetupUseCase:
         if not self.active_tunnel.created_at:
             return 0
         return int((datetime.now() - self.active_tunnel.created_at).total_seconds())
+    
+    async def cleanup_all_tunnels(self) -> None:
+        """Cleanup method to ensure all tunnels are properly stopped"""
+        try:
+            await self.ngrok_manager.stop_tunnel()
+            if self.active_tunnel:
+                self.active_tunnel.deactivate()
+                self.active_tunnel = None
+        except Exception as e:
+            # Log but don't raise - cleanup should be best effort
+            pass

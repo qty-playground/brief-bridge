@@ -39,7 +39,7 @@ scenarios('story.feature')
 
 # Given step wrappers
 @given('Brief Bridge server is running locally')
-def given_brief_bridge_server_is_running_locally(context):
+def given_brief_bridge_server_is_running_locally(context, ngrok_cleanup):
     """Delegate to given_server_is_running_locally step module"""
     context.phase = BDDPhase.GIVEN
     given_server_is_running_locally.invoke(context)

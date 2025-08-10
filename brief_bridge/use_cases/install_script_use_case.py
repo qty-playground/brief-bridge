@@ -32,8 +32,12 @@ $ClientName = "{client_name or 'PowerShell Client'}"
 $PollInterval = {poll_interval}
 $Debug = ${str(debug).lower()}
 
-# Download client script to temp location
-$TempPath = "$env:TEMP\\BriefBridgeClient.ps1"
+# Download client script to temp location (cross-platform path)
+if ($IsLinux -or $IsMacOS) {{
+    $TempPath = "/tmp/BriefBridgeClient.ps1"
+}} else {{
+    $TempPath = "$env:TEMP\\BriefBridgeClient.ps1"
+}}
 Write-Host "Downloading client script to $TempPath" -ForegroundColor Yellow
 
 # Embedded client script content
@@ -44,12 +48,19 @@ $ClientScript = @'
 # Save client script
 $ClientScript | Out-File -FilePath $TempPath -Encoding UTF8
 
+# Detect PowerShell executable (pwsh on Linux/macOS, powershell on Windows)
+$PowerShellExe = "powershell"
+if (Get-Command "pwsh" -ErrorAction SilentlyContinue) {{
+    $PowerShellExe = "pwsh"
+}}
+Write-Host "Using PowerShell executable: $PowerShellExe" -ForegroundColor Yellow
+
 # Execute client
 Write-Host "Starting Brief Bridge client..." -ForegroundColor Green
 if ($Debug) {{
-    & powershell -ExecutionPolicy Bypass -File $TempPath -ServerUrl $ServerUrl -ClientId $ClientId -ClientName "$ClientName" -PollInterval $PollInterval -Debug
+    & $PowerShellExe -ExecutionPolicy Bypass -File $TempPath -ServerUrl $ServerUrl -ClientId $ClientId -ClientName "$ClientName" -PollInterval $PollInterval -Debug
 }} else {{
-    & powershell -ExecutionPolicy Bypass -File $TempPath -ServerUrl $ServerUrl -ClientId $ClientId -ClientName "$ClientName" -PollInterval $PollInterval
+    & $PowerShellExe -ExecutionPolicy Bypass -File $TempPath -ServerUrl $ServerUrl -ClientId $ClientId -ClientName "$ClientName" -PollInterval $PollInterval
 }}
 """
         

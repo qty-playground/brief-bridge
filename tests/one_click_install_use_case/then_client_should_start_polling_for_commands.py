@@ -23,7 +23,7 @@ def invoke(ctx: ScenarioContext) -> None:
     assert has_ps1_polling or has_bash_polling, "Install script should contain poll interval parameter"
     
     # GREEN Stage 4: Verify script execution initiates the client
-    has_ps1_execution = "powershell -ExecutionPolicy Bypass" in ctx.install_script_content
+    has_ps1_execution = "$PowerShellExe -ExecutionPolicy Bypass" in ctx.install_script_content
     has_bash_execution = "chmod +x" in ctx.install_script_content and "$CLIENT_SCRIPT" in ctx.install_script_content
     
     assert has_ps1_execution or has_bash_execution, "Install script should execute client"

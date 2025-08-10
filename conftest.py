@@ -172,3 +172,51 @@ class ScenarioContext:
 def context() -> ScenarioContext:
     """Provide fresh ScenarioContext instance for each test scenario"""
     return ScenarioContext()
+
+
+@pytest.fixture
+def ngrok_cleanup():
+    """Fixture to ensure ngrok tunnels are properly cleaned up after tests"""
+    yield
+    
+    # Cleanup after test
+    try:
+        import asyncio
+        from brief_bridge.services.ngrok_manager import cleanup_all_ngrok_tunnels
+        
+        # Run cleanup in async context
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # Create new task for cleanup
+                task = loop.create_task(cleanup_all_ngrok_tunnels())
+                # Note: In real test execution, this might need different handling
+            else:
+                loop.run_until_complete(cleanup_all_ngrok_tunnels())
+        except RuntimeError:
+            # No event loop running, create new one
+            asyncio.run(cleanup_all_ngrok_tunnels())
+            
+    except ImportError:
+        # Module not available
+        pass
+
+
+@pytest.fixture(scope="session", autouse=True)
+def session_cleanup():
+    """Session-level cleanup to ensure all ngrok processes are cleaned up at the end"""
+    yield
+    
+    # Final cleanup after all tests
+    try:
+        import asyncio
+        from brief_bridge.services.ngrok_manager import cleanup_all_ngrok_tunnels
+        
+        # Force cleanup of all ngrok processes
+        try:
+            asyncio.run(cleanup_all_ngrok_tunnels())
+        except Exception:
+            pass
+            
+    except ImportError:
+        pass
