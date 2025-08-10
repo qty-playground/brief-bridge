@@ -9,5 +9,7 @@ def invoke(ctx: ScenarioContext) -> None:
     # Phase already set by wrapper function
     # Assert custom URL is configured
     
-    # GREEN Stage 1: Hardcoded fake implementation
-    raise NotImplementedError("Custom URL usage verification not implemented")
+    # GREEN Stage 1: Verify custom URL is used
+    assert hasattr(ctx, "custom_tunnel_response"), "Custom tunnel response not found"
+    response = ctx.custom_tunnel_response
+    assert response["public_url"] == "https://brief-bridge.example.com", f"Expected custom URL, got {response['public_url']}"

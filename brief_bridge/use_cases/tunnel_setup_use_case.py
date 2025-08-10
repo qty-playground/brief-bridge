@@ -39,7 +39,7 @@ class TunnelSetupUseCase:
     
     def _validate_provider(self, provider: str) -> None:
         """Validate that the provider is supported"""
-        supported_providers = ["ngrok", "cloudflare", "custom"]
+        supported_providers = ["ngrok"]
         if provider not in supported_providers:
             raise ValueError(f"Unsupported provider: {provider}. Supported: {supported_providers}")
     
@@ -47,10 +47,6 @@ class TunnelSetupUseCase:
         """Generate public URL based on provider type"""
         if provider == "ngrok":
             return self._generate_ngrok_url()
-        elif provider == "cloudflare":
-            return self._generate_cloudflare_url(config)
-        elif provider == "custom":
-            return self._get_custom_url(config)
         else:
             raise ValueError(f"URL generation not implemented for provider: {provider}")
     
@@ -59,17 +55,6 @@ class TunnelSetupUseCase:
         subdomain = str(uuid.uuid4())[:8]
         return f"https://{subdomain}.ngrok.io"
     
-    def _generate_cloudflare_url(self, config: Dict[str, Any]) -> str:
-        """Generate Cloudflare tunnel URL"""
-        tunnel_name = config.get("tunnel_name", "brief-bridge-tunnel")
-        return f"https://{tunnel_name}.example.com"
-    
-    def _get_custom_url(self, config: Dict[str, Any]) -> str:
-        """Extract custom URL from configuration"""
-        public_url = config.get("public_url")
-        if not public_url:
-            raise ValueError("Custom provider requires 'public_url' in config")
-        return public_url
     
     def _create_and_activate_tunnel(self, provider: str, public_url: str, config: Dict[str, Any]) -> Tunnel:
         """Create new tunnel and activate it"""
