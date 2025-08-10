@@ -4,7 +4,8 @@ from brief_bridge.repositories.command_repository import CommandRepository
 from brief_bridge.repositories.client_repository import ClientRepository
 
 # Configuration constants for command execution waiting
-DEFAULT_MAX_WAIT_TIME = 30.0  # seconds
+import os
+DEFAULT_MAX_WAIT_TIME = float(os.getenv('BRIEF_BRIDGE_TEST_TIMEOUT', '30.0'))  # seconds
 DEFAULT_POLL_INTERVAL = 0.5   # seconds
 
 

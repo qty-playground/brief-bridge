@@ -24,7 +24,7 @@ Feature: One-Click Install
     And client should start polling for commands
     And user should see success message
 
-  @skip
+  @wip
   Scenario: Install with custom client ID
     Given server is running and accessible via public URL
     When user executes install command with specified client ID:

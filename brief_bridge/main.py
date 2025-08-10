@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from brief_bridge.web.client_router import router as client_router
 from brief_bridge.web.command_router import router as command_router
 from brief_bridge.web.tunnel_router import router as tunnel_router
+from brief_bridge.web.install_router import router as install_router
 
 app = FastAPI(
     title="Brief Bridge",
@@ -13,6 +14,7 @@ app = FastAPI(
 app.include_router(client_router)
 app.include_router(command_router)
 app.include_router(tunnel_router)
+app.include_router(install_router)
 
 
 @app.get("/health")
