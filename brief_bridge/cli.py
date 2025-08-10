@@ -10,8 +10,9 @@ import signal
 import os
 from pathlib import Path
 
-def print_banner(port: int, host: str = "localhost"):
+def print_banner(port: int, host: str = "localhost", command_timeout: float = 300.0):
     """Print startup banner with connection information"""
+    timeout_minutes = command_timeout / 60
     banner = f"""
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                            🌉 Brief Bridge                                   ║
@@ -22,6 +23,7 @@ def print_banner(port: int, host: str = "localhost"):
    • Local URL:  http://{host}:{port}
    • Host:       {host}
    • Port:       {port}
+   • Command Timeout: {timeout_minutes:.1f} minutes ({command_timeout:.0f}s)
 
 📋 For AI Assistants (use localhost URLs):
    • GET  http://{host}:{port}/          - Complete API guide and endpoint reference
@@ -104,6 +106,13 @@ Examples:
     )
     
     parser.add_argument(
+        "--command-timeout",
+        type=float,
+        default=None,
+        help="Maximum time to wait for command execution (in seconds, default: 300 = 5 minutes)"
+    )
+    
+    parser.add_argument(
         "--version", "-v",
         action="version",
         version="Brief Bridge 0.1.0"
@@ -115,9 +124,18 @@ Examples:
     if args.external:
         args.host = "0.0.0.0"
     
+    # Set command timeout: CLI parameter overrides environment variable, which overrides default
+    if args.command_timeout is not None:
+        # CLI parameter specified - use it
+        final_timeout = args.command_timeout
+        os.environ['BRIEF_BRIDGE_COMMAND_TIMEOUT'] = str(final_timeout)
+    else:
+        # No CLI parameter - use environment variable or default
+        final_timeout = float(os.getenv('BRIEF_BRIDGE_COMMAND_TIMEOUT', '300.0'))
+    
     # Print startup banner
     display_host = "localhost" if args.host in ["127.0.0.1", "0.0.0.0"] else args.host
-    print_banner(args.port, display_host)
+    print_banner(args.port, display_host, final_timeout)
     
     try:
         print("🔄 Starting uvicorn server...")

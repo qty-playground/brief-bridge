@@ -8,7 +8,11 @@ from brief_bridge.repositories.client_repository import ClientRepository
 router = APIRouter(prefix="/clients", tags=["clients"])
 
 
-@router.post("/register", response_model=RegisterClientResponseSchema)
+@router.post("/register", 
+            response_model=RegisterClientResponseSchema,
+            summary="Register New Client",
+            description="Register a new client in the Brief Bridge system. Clients must register before they can receive commands.",
+            tags=["clients"])
 async def register_new_client(
     request: RegisterClientRequestSchema,
     use_case: RegisterClientUseCase = Depends(get_register_client_use_case)
@@ -30,7 +34,11 @@ async def register_new_client(
     )
 
 
-@router.get("/{client_id}", response_model=ClientSchema)
+@router.get("/{client_id}", 
+            response_model=ClientSchema,
+            summary="Get Client by ID",
+            description="Retrieve detailed information about a specific registered client by their unique ID.",
+            tags=["clients"])
 async def get_registered_client_by_id(
     client_id: str,
     repository: ClientRepository = Depends(get_client_repository)
@@ -47,7 +55,11 @@ async def get_registered_client_by_id(
     )
 
 
-@router.get("/", response_model=List[ClientSchema])
+@router.get("/", 
+            response_model=List[ClientSchema],
+            summary="List All Clients",
+            description="Get a list of all registered clients in the Brief Bridge system with their current status.",
+            tags=["clients"])
 async def get_all_registered_clients(
     repository: ClientRepository = Depends(get_client_repository)
 ) -> List[ClientSchema]:

@@ -63,12 +63,19 @@ app.include_router(tunnel_router)
 app.include_router(install_router)
 
 
-@app.get("/health")
+@app.get("/health", 
+         summary="Health Check",
+         description="Check if the Brief Bridge server is running and healthy",
+         tags=["health"])
 async def health_check():
+    """Health check endpoint to verify server status"""
     return {"status": "healthy"}
 
 
-@app.get("/")
+@app.get("/", 
+         summary="API Guide for AI Assistants", 
+         description="Complete API reference and usage guide specifically designed for AI coding assistants",
+         tags=["documentation"])
 async def root(request: Request):
     """Brief Bridge API - Simple JSON guide for AI assistants"""
     base_url = f"{request.url.scheme}://{request.url.netloc}"
@@ -89,6 +96,27 @@ async def root(request: Request):
                 "5. Submit command: POST /commands/submit with target_client_id and command_content (localhost)",
                 "6. Check results: GET /commands/ (localhost) to see execution results"
             ],
+            "tunnel_setup_example": {
+                "description": "How to setup tunnel for remote client access",
+                "required_parameters": {
+                    "provider": "Tunnel provider name (currently supported: 'ngrok')"
+                },
+                "optional_parameters": {
+                    "auth_token": "Authentication token for tunnel provider (uses system config if omitted)",
+                    "config": "Additional configuration options (JSON object)"
+                },
+                "basic_setup": f"curl -X POST {base_url}/tunnel/setup -H \"Content-Type: application/json\" -d '{{\"provider\": \"ngrok\"}}'",
+                "with_auth_token": f"curl -X POST {base_url}/tunnel/setup -H \"Content-Type: application/json\" -d '{{\"provider\": \"ngrok\", \"auth_token\": \"your-ngrok-token\"}}'",
+                "expected_response": {
+                    "status": "active",
+                    "public_url": "https://abc123.ngrok-free.app", 
+                    "remote_client_installation": {
+                        "instructions": "Use these commands on remote machines to install Brief Bridge clients:",
+                        "powershell_direct": "irm https://abc123.ngrok-free.app/install.ps1 | iex",
+                        "bash_direct": "curl -sSL https://abc123.ngrok-free.app/install.sh | bash"
+                    }
+                }
+            },
             "key_endpoints": {
                 "tunnel_setup": "POST /tunnel/setup - ⭐ CRITICAL FIRST STEP for remote usage",
                 "tunnel_status": "GET /tunnel/status - Check tunnel connection status",
@@ -100,7 +128,7 @@ async def root(request: Request):
                 "powershell_install": "GET /install.ps1 - Use tunnel URL for remote clients",
                 "bash_install": "GET /install.sh - Use tunnel URL for remote clients"
             },
-            "example_command": f"curl -X POST {base_url}/commands/submit -H \"Content-Type: application/json\" -d '{{\"target_client_id\": \"your-client\", \"command_content\": \"Get-Date\", \"command_type\": \"shell\"}}'"
+            "example_command_submission": f"curl -X POST {base_url}/commands/submit -H \"Content-Type: application/json\" -d '{{\"target_client_id\": \"your-client\", \"command_content\": \"Get-Date\", \"command_type\": \"shell\"}}'"
         },
         "documentation": {
             "full_guide": f"{base_url}/static/index.html",

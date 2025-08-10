@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
+import os
 from brief_bridge.web.schemas import SubmitCommandRequestSchema, SubmitCommandResponseSchema, CommandSchema, SubmitResultRequestSchema, SubmitResultResponseSchema
 from brief_bridge.web.dependencies import get_submit_command_use_case, get_command_repository
 from brief_bridge.use_cases.submit_command_use_case import SubmitCommandUseCase, CommandSubmissionRequest
@@ -136,7 +137,7 @@ async def poll_for_commands(
         return {
             "command_id": command.command_id,
             "command_content": command.content,
-            "timeout": 30  # Default timeout in seconds
+            "timeout": int(float(os.getenv('BRIEF_BRIDGE_COMMAND_TIMEOUT', '300.0')))  # Use configured timeout
         }
     
     # No pending commands - return empty response

@@ -6,13 +6,17 @@ from ..use_cases.install_script_use_case import InstallScriptUseCase
 
 router = APIRouter()
 
-@router.get("/install.ps1", response_class=PlainTextResponse)
+@router.get("/install.ps1", 
+           response_class=PlainTextResponse,
+           summary="Get PowerShell Install Script",
+           description="Generate a one-click PowerShell installation script for Windows clients. This script will automatically download, configure, and start the Brief Bridge client.",
+           tags=["installation"])
 async def get_powershell_install(
     request: Request,
-    client_id: Optional[str] = Query(None),
-    client_name: Optional[str] = Query(None), 
-    poll_interval: int = Query(5),
-    debug: bool = Query(False)
+    client_id: Optional[str] = Query(None, description="Custom client ID (defaults to hostname)"),
+    client_name: Optional[str] = Query(None, description="Human-readable client name"), 
+    poll_interval: int = Query(5, description="Polling interval in seconds"),
+    debug: bool = Query(False, description="Enable debug mode for verbose output")
 ):
     """Get PowerShell one-click install script"""
     # Get the server URL from the request
@@ -26,13 +30,17 @@ async def get_powershell_install(
     )
     return script
 
-@router.get("/install.sh", response_class=PlainTextResponse)  
+@router.get("/install.sh", 
+           response_class=PlainTextResponse,
+           summary="Get Bash Install Script",
+           description="Generate a one-click Bash installation script for Linux/macOS clients. This script will automatically download, configure, and start the Brief Bridge client.",
+           tags=["installation"])  
 async def get_bash_install(
     request: Request,
-    client_id: Optional[str] = Query(None),
-    client_name: Optional[str] = Query(None),
-    poll_interval: int = Query(5), 
-    debug: bool = Query(False)
+    client_id: Optional[str] = Query(None, description="Custom client ID (defaults to hostname)"),
+    client_name: Optional[str] = Query(None, description="Human-readable client name"),
+    poll_interval: int = Query(5, description="Polling interval in seconds"), 
+    debug: bool = Query(False, description="Enable debug mode for verbose output")
 ):
     """Get Bash one-click install script"""
     # Get the server URL from the request

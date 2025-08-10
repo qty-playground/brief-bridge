@@ -1,6 +1,6 @@
 """Tunnel management router for Web API"""
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional
 from ..use_cases.tunnel_setup_use_case import TunnelSetupUseCase
 from .dependencies import get_tunnel_setup_use_case
@@ -10,39 +10,57 @@ router = APIRouter(prefix="/tunnel", tags=["tunnel"])
 
 class TunnelSetupRequest(BaseModel):
     """Request schema for tunnel setup"""
-    provider: str
-    auth_token: Optional[str] = None
-    config: Optional[Dict[str, Any]] = None
+    provider: str = Field(
+        description="Tunnel provider name. Currently supported: 'ngrok'",
+        example="ngrok"
+    )
+    auth_token: Optional[str] = Field(
+        None, 
+        description="Authentication token for the tunnel provider (optional). If not provided, will use system configuration or environment variables."
+    )
+    config: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Additional configuration options for the tunnel provider (optional)"
+    )
 
 
 class RemoteClientInstallation(BaseModel):
     """Schema for remote client installation commands"""
-    instructions: str
-    commands: Dict[str, str]
-    powershell_direct: str
-    bash_direct: str
+    instructions: str = Field(description="Human-readable instructions for installing remote clients")
+    commands: Dict[str, str] = Field(description="Platform-specific installation commands")
+    powershell_direct: str = Field(description="Direct PowerShell command for Windows installation")
+    bash_direct: str = Field(description="Direct Bash command for Linux/macOS installation")
 
 
 class TunnelSetupResponse(BaseModel):
     """Response schema for tunnel setup"""
-    status: str
-    public_url: str
-    provider: str
-    install_urls: Dict[str, str]
-    remote_client_installation: RemoteClientInstallation
+    status: str = Field(description="Current tunnel status ('active' or 'inactive')")
+    public_url: str = Field(description="Public URL of the established tunnel")
+    provider: str = Field(description="Tunnel provider used (e.g., 'ngrok')")
+    install_urls: Dict[str, str] = Field(description="URLs for downloading installation scripts")
+    remote_client_installation: RemoteClientInstallation = Field(
+        description="Complete remote client installation information and commands"
+    )
 
 
 class TunnelStatusResponse(BaseModel):
     """Response schema for tunnel status"""
-    active: bool
-    provider: Optional[str] = None
-    public_url: Optional[str] = None
-    uptime: Optional[int] = None
-    connections: Optional[int] = None
-    install_commands: Optional[Dict[str, str]] = None
+    active: bool = Field(description="Whether the tunnel is currently active")
+    provider: Optional[str] = Field(None, description="Tunnel provider name if active")
+    public_url: Optional[str] = Field(None, description="Public URL if tunnel is active")
+    uptime: Optional[int] = Field(None, description="Tunnel uptime in seconds")
+    connections: Optional[int] = Field(None, description="Number of active connections")
+    install_commands: Optional[Dict[str, str]] = Field(
+        None, 
+        description="Platform-specific installation commands if tunnel is active"
+    )
 
 
-@router.post("/setup", response_model=TunnelSetupResponse)
+@router.post("/setup", 
+            response_model=TunnelSetupResponse,
+            summary="Setup Tunnel",
+            description="Set up ngrok tunnel to enable remote client connections. Returns public URL and installation commands for remote clients.",
+            tags=["tunnel"])
 async def setup_tunnel(
     request: TunnelSetupRequest,
     tunnel_use_case: TunnelSetupUseCase = Depends(get_tunnel_setup_use_case)
@@ -66,7 +84,11 @@ async def setup_tunnel(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/status", response_model=TunnelStatusResponse)
+@router.get("/status", 
+            response_model=TunnelStatusResponse,
+            summary="Get Tunnel Status",
+            description="Check the current status of the tunnel connection, including uptime and remote installation commands.",
+            tags=["tunnel"])
 async def get_tunnel_status(
     tunnel_use_case: TunnelSetupUseCase = Depends(get_tunnel_setup_use_case)
 ):
