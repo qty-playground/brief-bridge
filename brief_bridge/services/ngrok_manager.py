@@ -191,18 +191,7 @@ async def cleanup_all_ngrok_tunnels():
             logger.info("Skipping ngrok cleanup in mock mode")
             return
             
-        # Use system commands to kill ngrok processes instead of ngrok API
-        # This avoids starting new ngrok processes during cleanup
-        import subprocess
-        
-        try:
-            # Kill all ngrok processes
-            subprocess.run(['pkill', '-f', 'ngrok'], check=False)
-            logger.info("Ngrok processes terminated via pkill")
-        except Exception as e:
-            logger.warning(f"Failed to kill ngrok processes via pkill: {e}")
-            
-        # Also try to use ngrok API for graceful cleanup if available
+        # First try graceful cleanup via ngrok API
         try:
             loop = asyncio.get_event_loop()
             tunnels = await loop.run_in_executor(None, ngrok.get_tunnels)
@@ -216,9 +205,31 @@ async def cleanup_all_ngrok_tunnels():
                     
         except Exception as e:
             logger.debug(f"Could not use ngrok API for cleanup: {e}")
+        
+        # Then ensure all ngrok processes are terminated
+        import subprocess
+        import time
+        
+        try:
+            # Kill all ngrok processes
+            result = subprocess.run(['pkill', '-f', 'ngrok'], check=False)
+            if result.returncode == 0:
+                logger.info("Ngrok processes terminated via pkill")
+                # Give processes time to terminate
+                time.sleep(0.5)
+            else:
+                logger.debug("No ngrok processes found to terminate")
+        except Exception as e:
+            logger.warning(f"Failed to kill ngrok processes via pkill: {e}")
             
     except Exception as e:
         logger.warning(f"Error during ngrok cleanup: {e}")
+    finally:
+        # Force kill any remaining ngrok daemon processes
+        try:
+            subprocess.run(['pkill', '-9', '-f', 'ngrok'], check=False)
+        except Exception:
+            pass
 
 
 def create_ngrok_manager(use_mock: bool = None, port: Optional[int] = None) -> NgrokManager:

@@ -2,8 +2,6 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
-import signal
-import asyncio
 import os
 from brief_bridge.web.client_router import router as client_router
 from brief_bridge.web.command_router import router as command_router
@@ -12,31 +10,28 @@ from brief_bridge.web.install_router import router as install_router
 from brief_bridge.web.client_download_router import router as client_download_router
 from brief_bridge.services.ngrok_manager import cleanup_all_ngrok_tunnels
 
+# Global flag to prevent multiple cleanup attempts
+_cleanup_done = False
+
 async def cleanup_handler():
     """Cleanup handler for graceful shutdown"""
+    global _cleanup_done
+    if _cleanup_done:
+        return
+    
+    _cleanup_done = True
     try:
+        print("🔄 Initiating cleanup...")
         await cleanup_all_ngrok_tunnels()
         print("✅ Ngrok tunnels cleaned up successfully")
     except Exception as e:
         print(f"⚠️ Error during ngrok cleanup: {e}")
 
 
-def signal_handler(signum, frame):
-    """Handle shutdown signals"""
-    print(f"\n🔄 Received signal {signum}, initiating cleanup...")
-    asyncio.create_task(cleanup_handler())
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup - register signal handlers (only in main thread)
-    try:
-        signal.signal(signal.SIGTERM, signal_handler)
-        signal.signal(signal.SIGINT, signal_handler)
-        print("🚀 Brief Bridge started - ngrok cleanup handlers registered")
-    except ValueError as e:
-        # Signal handling not available in tests
-        print(f"🔄 Signal handlers not registered (test environment): {e}")
+    # Startup
+    print("🚀 Brief Bridge started")
     
     yield
     
