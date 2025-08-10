@@ -17,6 +17,21 @@ class InstallScriptUseCase:
         # Read the base PowerShell client script
         script_content = self._get_powershell_client_base()
         
+        # Generate client ID logic
+        if client_id:
+            client_id_logic = f'$ClientId = "{client_id}"'
+        else:
+            client_id_logic = '''# Auto-detect client ID based on platform
+if ($env:COMPUTERNAME) {
+    $ClientId = $env:COMPUTERNAME
+} elseif ($env:HOSTNAME) {
+    $ClientId = $env:HOSTNAME  
+} elseif ($env:USER) {
+    $ClientId = "$env:USER-$(Get-Random -Maximum 9999)"
+} else {
+    $ClientId = "pwsh-client-$(Get-Random -Maximum 9999)"
+}'''
+
         # Generate install wrapper script
         install_script = f"""
 # Brief Bridge One-Click PowerShell Installer
@@ -27,10 +42,12 @@ Write-Host "Downloading and starting client..." -ForegroundColor Cyan
 
 # Default parameters
 $ServerUrl = "{self.server_url}"
-$ClientId = "{client_id or '$env:COMPUTERNAME'}"
 $ClientName = "{client_name or 'PowerShell Client'}"
 $PollInterval = {poll_interval}
 $DebugMode = ${str(debug).lower()}
+
+# Cross-platform client ID detection
+{client_id_logic}
 
 # Download client script to temp location (cross-platform path)
 if ($IsLinux -or $IsMacOS) {{
@@ -113,23 +130,224 @@ fi
     
     def _get_powershell_client_base(self) -> str:
         """Get the base PowerShell client script content"""
-        # In real implementation, this would read from the actual client file
-        # For now, return a placeholder that refers to the actual implementation
+        # Real PowerShell client implementation based on ws-call
         return """
-# This would contain the actual PowerShell client script content
-# For testing, we reference the existing windows-client/BriefBridgeClient.ps1
+# Brief Bridge PowerShell HTTP Polling Client
+# Compatible with PowerShell 5.1 and later
 param(
     [string]$ServerUrl = "http://localhost:8000",
     [Parameter(Mandatory=$true)][string]$ClientId,
-    [string]$ClientName = "",
+    [string]$ClientName = "PowerShell Client",
     [int]$PollInterval = 5,
     [switch]$DebugMode
 )
 
-Write-Host "Brief Bridge Client Starting..." -ForegroundColor Green
+# Configuration
+$ApiBase = "$ServerUrl"
+$MaxRetries = 3
+$RetryDelay = 5
+
+Write-Host "=== Brief Bridge PowerShell Client ===" -ForegroundColor Green
 Write-Host "Server: $ServerUrl" -ForegroundColor Cyan
 Write-Host "Client ID: $ClientId" -ForegroundColor Cyan
+Write-Host "Client Name: $ClientName" -ForegroundColor Cyan
+Write-Host "Poll Interval: $PollInterval seconds" -ForegroundColor Cyan
+Write-Host "Press Ctrl+C to stop" -ForegroundColor Yellow
+Write-Host ""
 
-# Placeholder - would contain full client implementation
-Write-Host "Client functionality placeholder - install successful!" -ForegroundColor Green
+# Function to make HTTP requests with retry logic
+function Invoke-HttpRequest {
+    param(
+        [string]$Uri,
+        [string]$Method = "GET",
+        [hashtable]$Body = $null,
+        [int]$Retries = $MaxRetries
+    )
+    
+    for ($i = 0; $i -lt $Retries; $i++) {
+        try {
+            $headers = @{ "Content-Type" = "application/json" }
+            
+            if ($Body) {
+                $jsonBody = $Body | ConvertTo-Json -Depth 10
+                $response = Invoke-RestMethod -Uri $Uri -Method $Method -Body $jsonBody -Headers $headers -TimeoutSec 30
+            } else {
+                $response = Invoke-RestMethod -Uri $Uri -Method $Method -Headers $headers -TimeoutSec 30
+            }
+            
+            return $response
+        }
+        catch {
+            Write-Warning "Request failed (attempt $($i + 1)/$Retries): $($_.Exception.Message)"
+            if ($i -eq $Retries - 1) {
+                throw $_.Exception
+            }
+            Start-Sleep -Seconds $RetryDelay
+        }
+    }
+}
+
+# Function to register client
+function Register-Client {
+    try {
+        $body = @{
+            client_id = $ClientId
+            name = $ClientName
+        }
+        
+        $response = Invoke-HttpRequest -Uri "$ApiBase/clients/register" -Method "POST" -Body $body
+        Write-Host "[REGISTER] Client registered successfully" -ForegroundColor Green
+        return $true
+    }
+    catch {
+        Write-Error "Failed to register client: $($_.Exception.Message)"
+        return $false
+    }
+}
+
+# Function to execute PowerShell command
+function Invoke-PowerShellCommand {
+    param(
+        [string]$Command,
+        [int]$TimeoutSeconds = 30
+    )
+    
+    $startTime = Get-Date
+    
+    try {
+        Write-Host "[EXEC] $Command" -ForegroundColor Yellow
+        
+        # Execute command and capture output
+        $output = Invoke-Expression $Command 2>&1 | Out-String
+        
+        $executionTime = ((Get-Date) - $startTime).TotalSeconds
+        
+        Write-Host "[SUCCESS] Execution time: $([math]::Round($executionTime, 2))s" -ForegroundColor Green
+        
+        return @{
+            success = $true
+            output = $output.Trim()
+            error = $null
+            execution_time = $executionTime
+        }
+    }
+    catch {
+        $executionTime = ((Get-Date) - $startTime).TotalSeconds
+        $errorMessage = $_.Exception.Message
+        
+        Write-Host "[ERROR] $errorMessage" -ForegroundColor Red
+        
+        return @{
+            success = $false
+            output = $null
+            error = $errorMessage
+            execution_time = $executionTime
+        }
+    }
+}
+
+# Function to submit command result
+function Submit-CommandResult {
+    param(
+        [string]$CommandId,
+        [hashtable]$Result
+    )
+    
+    try {
+        $body = @{
+            command_id = $CommandId
+            success = $Result.success
+            output = $Result.output
+            error = $Result.error
+            execution_time = $Result.execution_time
+        }
+        
+        $response = Invoke-HttpRequest -Uri "$ApiBase/commands/result" -Method "POST" -Body $body
+        Write-Host "[RESULT] Submitted result for command $CommandId" -ForegroundColor Cyan
+        return $true
+    }
+    catch {
+        Write-Error "Failed to submit result for command $CommandId`: $($_.Exception.Message)"
+        return $false
+    }
+}
+
+# Function to poll for commands
+function Get-PendingCommand {
+    try {
+        $body = @{
+            client_id = $ClientId
+        }
+        
+        $response = Invoke-HttpRequest -Uri "$ApiBase/commands/poll" -Method "POST" -Body $body
+        
+        if ($response.command_id) {
+            Write-Host "[POLL] Received command: $($response.command_id)" -ForegroundColor Magenta
+            return $response
+        }
+        
+        return $null
+    }
+    catch {
+        Write-Warning "Failed to poll for commands: $($_.Exception.Message)"
+        return $null
+    }
+}
+
+# Register client
+if (-not (Register-Client)) {
+    Write-Error "Failed to register client. Exiting."
+    exit 1
+}
+
+# Main polling loop
+$consecutiveErrors = 0
+$maxConsecutiveErrors = 5
+
+Write-Host "Starting polling loop..." -ForegroundColor Green
+
+try {
+    while ($true) {
+        try {
+            # Poll for pending commands
+            $command = Get-PendingCommand
+            
+            if ($command) {
+                # Reset error counter on successful poll
+                $consecutiveErrors = 0
+                
+                # Execute the command
+                $result = Invoke-PowerShellCommand -Command $command.command_content -TimeoutSeconds $command.timeout
+                
+                # Submit the result
+                $submitted = Submit-CommandResult -CommandId $command.command_id -Result $result
+                
+                if (-not $submitted) {
+                    Write-Warning "Failed to submit result, but continuing..."
+                }
+            } else {
+                # No commands available, reset error counter
+                $consecutiveErrors = 0
+            }
+        }
+        catch {
+            $consecutiveErrors++
+            Write-Error "Polling error ($consecutiveErrors/$maxConsecutiveErrors): $($_.Exception.Message)"
+            
+            if ($consecutiveErrors -ge $maxConsecutiveErrors) {
+                Write-Error "Too many consecutive errors. Exiting."
+                break
+            }
+        }
+        
+        # Wait before next poll
+        Start-Sleep -Seconds $PollInterval
+    }
+}
+catch {
+    Write-Error "Fatal error in main loop: $($_.Exception.Message)"
+}
+finally {
+    Write-Host "Client shutting down..." -ForegroundColor Yellow
+}
 """

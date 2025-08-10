@@ -114,6 +114,35 @@ async def get_commands_by_client_id(
     return []  # No pending commands
 
 
+@router.post("/poll", response_model=dict)
+async def poll_for_commands(
+    request: dict,
+    repository: CommandRepository = Depends(get_command_repository)
+) -> dict:
+    """API endpoint: Client polls for pending commands"""
+    client_id = request.get("client_id")
+    if not client_id:
+        raise HTTPException(status_code=400, detail="client_id is required")
+    
+    # Get only pending commands for this client
+    pending_commands = await repository.get_pending_commands_for_client(client_id)
+    
+    # If there are pending commands, mark the first one as processing and return it
+    if pending_commands:
+        command = pending_commands[0]  # Only return one command for single execution
+        command.mark_as_processing()
+        await repository.save_command(command)
+        
+        return {
+            "command_id": command.command_id,
+            "command_content": command.content,
+            "timeout": 30  # Default timeout in seconds
+        }
+    
+    # No pending commands - return empty response
+    return {}
+
+
 @router.post("/result", response_model=SubmitResultResponseSchema)
 async def submit_command_result(
     request: SubmitResultRequestSchema,

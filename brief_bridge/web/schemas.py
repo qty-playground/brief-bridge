@@ -55,6 +55,7 @@ class CommandSchema(BaseModel):
 
 class SubmitResultRequestSchema(BaseModel):
     command_id: str
+    success: bool = True
     output: Optional[str] = None
     error: Optional[str] = None
     execution_time: Optional[float] = None
