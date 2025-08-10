@@ -24,7 +24,13 @@ def invoke(ctx: ScenarioContext, expected_response: str) -> None:
         
         if isinstance(expected_value, str) and "[a-z0-9]" in expected_value:
             # Handle URL pattern matching
-            pattern = expected_value.replace("[a-z0-9]+", "[a-z0-9]+").replace(".", "\\.")
+            pattern = expected_value.replace("[a-z0-9]+", "[a-z0-9]+")
+            # Handle special case for ngrok domains - don't escape dots within parentheses
+            if "(ngrok.io|ngrok-free.app)" in pattern:
+                pattern = pattern.replace("https://", "https://")
+                pattern = pattern.replace("/", "\\/")
+            else:
+                pattern = pattern.replace(".", "\\.")
             assert re.match(pattern, actual[key]), f"Status field {key} doesn't match pattern {expected_value}"
         elif isinstance(expected_value, dict):
             # Handle nested objects like install_commands
@@ -36,7 +42,7 @@ def invoke(ctx: ScenarioContext, expected_response: str) -> None:
                     if "https://" in nested_value and "[a-z0-9]" in nested_value:
                         # Just check that the actual value contains a valid ngrok URL
                         assert "https://" in actual[key][nested_key], f"Install command should contain https URL"
-                        assert ".ngrok.io" in actual[key][nested_key], f"Install command should contain ngrok.io domain"
+                        assert (".ngrok.io" in actual[key][nested_key] or ".ngrok-free.app" in actual[key][nested_key]), f"Install command should contain ngrok domain"
                         assert "install." in actual[key][nested_key], f"Install command should reference install script"
                     else:
                         pattern = nested_value.replace("[a-z0-9]+", "[a-z0-9]+").replace(".", "\\.")

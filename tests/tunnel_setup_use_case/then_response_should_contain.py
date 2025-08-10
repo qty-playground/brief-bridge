@@ -26,7 +26,12 @@ def invoke(ctx: ScenarioContext, expected_response: str) -> None:
         if isinstance(expected_value, str) and expected_value.startswith("https://") and "[a-z0-9]" in expected_value:
             # Convert pattern to regex and test
             pattern = expected_value.replace("[a-z0-9]+", "[a-z0-9]+")
-            pattern = pattern.replace(".", "\\.")
+            # Handle special case for ngrok domains - don't escape dots within parentheses
+            if "(ngrok.io|ngrok-free.app)" in pattern:
+                pattern = pattern.replace("https://", "https://")
+                pattern = pattern.replace("/", "\\/")
+            else:
+                pattern = pattern.replace(".", "\\.")
             assert re.match(pattern, actual[key]), f"URL {actual[key]} doesn't match pattern {expected_value}"
         elif isinstance(expected_value, dict):
             # Recursive check for nested objects

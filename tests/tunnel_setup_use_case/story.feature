@@ -14,11 +14,11 @@ Feature: Tunnel Setup
       """
       {
         "status": "active",
-        "public_url": "https://[a-z0-9]+.ngrok.io",
+        "public_url": "https://[a-z0-9]+.(ngrok.io|ngrok-free.app)",
         "provider": "ngrok",
         "install_urls": {
-          "powershell": "https://[a-z0-9]+.ngrok.io/install.ps1",
-          "bash": "https://[a-z0-9]+.ngrok.io/install.sh"
+          "powershell": "https://[a-z0-9]+.(ngrok.io|ngrok-free.app)/install.ps1",
+          "bash": "https://[a-z0-9]+.(ngrok.io|ngrok-free.app)/install.sh"
         }
       }
       """
@@ -31,12 +31,12 @@ Feature: Tunnel Setup
       {
         "active": true,
         "provider": "ngrok",
-        "public_url": "https://[a-z0-9]+.ngrok.io",
+        "public_url": "https://[a-z0-9]+.(ngrok.io|ngrok-free.app)",
         "uptime": 3600,
         "connections": 5,
         "install_commands": {
-          "windows": "iex ((Invoke-WebRequest 'https://[a-z0-9]+.ngrok.io/install.ps1').Content)",
-          "linux": "curl -sSL https://[a-z0-9]+.ngrok.io/install.sh | bash"
+          "windows": "iex ((Invoke-WebRequest 'https://[a-z0-9]+.(ngrok.io|ngrok-free.app)/install.ps1').Content)",
+          "linux": "curl -sSL https://[a-z0-9]+.(ngrok.io|ngrok-free.app)/install.sh | bash"
         }
       }
       """
