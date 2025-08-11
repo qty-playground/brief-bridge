@@ -1,6 +1,5 @@
 Feature: Client State Management
 
-  @wip
   Scenario: Update client last_seen on polling
     Given client "active-client" is registered with status "online"
     When client polls server for commands
