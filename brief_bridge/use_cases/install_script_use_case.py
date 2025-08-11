@@ -11,6 +11,7 @@ class InstallScriptUseCase:
     def generate_powershell_script(self, client_id: Optional[str] = None, 
                                  client_name: Optional[str] = None,
                                  poll_interval: int = 5,
+                                 idle_timeout_minutes: int = 10,
                                  debug: bool = False) -> str:
         """Generate PowerShell install script"""
         
@@ -78,9 +79,9 @@ Write-Host "Using PowerShell executable: $PowerShellExe" -ForegroundColor Yellow
 # Execute client
 Write-Host "Starting Brief Bridge client..." -ForegroundColor Green
 if ($DebugMode -eq "true") {{
-    & $PowerShellExe -ExecutionPolicy Bypass -File $TempPath -ServerUrl $ServerUrl -ClientId $ClientId -ClientName "$ClientName" -PollInterval $PollInterval -DebugMode
+    & $PowerShellExe -ExecutionPolicy Bypass -File $TempPath -ServerUrl $ServerUrl -ClientId $ClientId -ClientName "$ClientName" -PollInterval $PollInterval -IdleTimeoutMinutes {idle_timeout_minutes} -DebugMode
 }} else {{
-    & $PowerShellExe -ExecutionPolicy Bypass -File $TempPath -ServerUrl $ServerUrl -ClientId $ClientId -ClientName "$ClientName" -PollInterval $PollInterval
+    & $PowerShellExe -ExecutionPolicy Bypass -File $TempPath -ServerUrl $ServerUrl -ClientId $ClientId -ClientName "$ClientName" -PollInterval $PollInterval -IdleTimeoutMinutes {idle_timeout_minutes}
 }}
 """
         

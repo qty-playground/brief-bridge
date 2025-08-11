@@ -51,7 +51,8 @@ async def get_registered_client_by_id(
     return ClientSchema(
         client_id=client.client_id,
         name=client.name,
-        status=client.status
+        status=client.status,
+        last_seen=client.last_seen.isoformat() if client.last_seen else None
     )
 
 
@@ -69,7 +70,8 @@ async def get_all_registered_clients(
         ClientSchema(
             client_id=client.client_id,
             name=client.name,
-            status=client.status
+            status=client.status,
+            last_seen=client.last_seen.isoformat() if client.last_seen else None
         )
         for client in registered_clients
     ]

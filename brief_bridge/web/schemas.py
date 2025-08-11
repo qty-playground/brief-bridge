@@ -19,6 +19,7 @@ class ClientSchema(BaseModel):
     client_id: str
     name: Optional[str]
     status: str
+    last_seen: Optional[str] = None
 
 
 class SubmitCommandRequestSchema(BaseModel):
