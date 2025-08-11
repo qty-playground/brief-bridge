@@ -1,6 +1,6 @@
 # Brief Bridge
 
-A production-ready tool that bridges AI coding assistants with distributed clients through HTTP polling, featuring advanced client lifecycle management and comprehensive monitoring.
+A functional tool that bridges AI coding assistants with distributed clients through HTTP polling, featuring client lifecycle management and monitoring.
 
 ## Real-World Example
 
@@ -58,7 +58,7 @@ curl -sSL https://your-tunnel-url/install.sh | bash
 
 ## Key Features
 
-- **Smart Client Lifecycle Management**
+- **Client Lifecycle Management**
   - Configurable idle timeout (default 10 minutes)
   - Auto-stop after 3 consecutive connection failures
   - Server-side terminate command support
@@ -126,7 +126,7 @@ Simple command submission via JSON:
 
 ## Client Lifecycle Management
 
-Brief Bridge includes sophisticated client lifecycle management:
+Brief Bridge includes client lifecycle management:
 
 ### Automatic Timeout Protection
 - **Idle Timeout**: Clients automatically terminate after configurable period (default: 10 minutes)
@@ -182,7 +182,7 @@ brief-bridge --reload --external
 
 ## Status
 
-✅ **Production Ready** - Full client lifecycle management, monitoring, and tunnel support
+✅ **Functional MVP** - Core features working with client lifecycle management, monitoring, and tunnel support
 
 ## License
 
