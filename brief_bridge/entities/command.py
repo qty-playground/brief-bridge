@@ -11,7 +11,7 @@ class Command:
     content: str
     type: str = "shell"
     status: str = "pending"  # pending → processing → completed/failed
-    encoding: Optional[str] = None  # base64, None for regular commands
+    # encoding removed - no longer supporting base64
     created_at: Optional[datetime] = None
     
     # New fields for result handling
