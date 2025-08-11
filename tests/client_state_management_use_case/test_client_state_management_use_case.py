@@ -123,8 +123,7 @@ def then_client_last_seen_should_be_updated_wrapper(context):
 def then_client_status_should_remain_wrapper(context, status):
     """Delegate to then_client_status_should_remain step module"""
     context.phase = BDDPhase.THEN
-    context.expected_status = status
-    then_client_status_should_remain.invoke(context)
+    then_client_status_should_remain.invoke(context, expected_status=status)
 
 @then(parsers.parse('client should be marked as "{status}"'))
 def then_client_should_be_marked_as_wrapper(context, status):
