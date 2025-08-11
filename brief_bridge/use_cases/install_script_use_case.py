@@ -86,7 +86,7 @@ if ($DebugMode -eq "true") {{
     
     def _get_powershell_client_base(self) -> str:
         """Get the base PowerShell client script content"""
-        # Real PowerShell client implementation based on ws-call
+        # Enhanced PowerShell client with lifecycle management
         return """
 # Brief Bridge PowerShell HTTP Polling Client
 # Compatible with PowerShell 5.1 and later
@@ -95,6 +95,7 @@ param(
     [Parameter(Mandatory=$true)][string]$ClientId,
     [string]$ClientName = "PowerShell Client",
     [int]$PollInterval = 5,
+    [int]$IdleTimeoutMinutes = 10,
     [switch]$DebugMode
 )
 
@@ -102,16 +103,51 @@ param(
 $ApiBase = "$ServerUrl"
 $MaxRetries = 3
 $RetryDelay = 5
+$MaxConsecutive404s = 3
+$IdleTimeoutSeconds = $IdleTimeoutMinutes * 60
 
 Write-Host "=== Brief Bridge PowerShell Client ===" -ForegroundColor Green
 Write-Host "Server: $ServerUrl" -ForegroundColor Cyan
 Write-Host "Client ID: $ClientId" -ForegroundColor Cyan
 Write-Host "Client Name: $ClientName" -ForegroundColor Cyan
 Write-Host "Poll Interval: $PollInterval seconds" -ForegroundColor Cyan
+Write-Host "Idle Timeout: $IdleTimeoutMinutes minutes" -ForegroundColor Cyan
 Write-Host "Press Ctrl+C to stop" -ForegroundColor Yellow
 Write-Host ""
 
-# Function to make HTTP requests with retry logic
+# Lifecycle tracking variables
+$lastCommandTime = Get-Date
+$consecutive404Count = 0
+$shouldTerminate = $false
+
+# Function to check idle timeout
+function Test-IdleTimeout {
+    $idleTime = ((Get-Date) - $lastCommandTime).TotalSeconds
+    
+    if ($idleTime -ge $IdleTimeoutSeconds) {
+        Write-Host "[LIFECYCLE] Idle timeout reached ($([math]::Round($idleTime, 1))s >= $IdleTimeoutSeconds s)" -ForegroundColor Yellow
+        Write-Host "[LIFECYCLE] Client terminating due to inactivity" -ForegroundColor Red
+        return $true
+    }
+    
+    if ($DebugMode) {
+        Write-Host "[DEBUG] Idle time: $([math]::Round($idleTime, 1))s / $IdleTimeoutSeconds s" -ForegroundColor DarkGray
+    }
+    
+    return $false
+}
+
+# Function to handle 404 tracking
+function Test-404Limit {
+    if ($consecutive404Count -ge $MaxConsecutive404s) {
+        Write-Host "[LIFECYCLE] Maximum consecutive 404s reached ($consecutive404Count)" -ForegroundColor Yellow
+        Write-Host "[LIFECYCLE] Client terminating due to server unavailability" -ForegroundColor Red
+        return $true
+    }
+    return $false
+}
+
+# Function to make HTTP requests with enhanced error handling
 function Invoke-HttpRequest {
     param(
         [string]$Uri,
@@ -131,9 +167,28 @@ function Invoke-HttpRequest {
                 $response = Invoke-RestMethod -Uri $Uri -Method $Method -Headers $headers -TimeoutSec 30
             }
             
+            # Reset 404 counter on successful request
+            $global:consecutive404Count = 0
             return $response
         }
         catch {
+            $statusCode = $null
+            if ($_.Exception.Response) {
+                $statusCode = [int]$_.Exception.Response.StatusCode
+            }
+            
+            # Track 404s specifically
+            if ($statusCode -eq 404) {
+                $global:consecutive404Count++
+                Write-Warning "HTTP 404 - Not Found (consecutive: $global:consecutive404Count/$MaxConsecutive404s)"
+                
+                # Check if we've hit the limit
+                if (Test-404Limit) {
+                    $global:shouldTerminate = $true
+                    throw "Maximum consecutive 404s reached"
+                }
+            }
+            
             Write-Warning "Request failed (attempt $($i + 1)/$Retries): $($_.Exception.Message)"
             if ($i -eq $Retries - 1) {
                 throw $_.Exception
@@ -171,8 +226,24 @@ function Invoke-PowerShellCommand {
     $startTime = Get-Date
     
     try {
+        # Check for terminate command
+        if ($Command.Trim() -eq "terminate") {
+            Write-Host "[LIFECYCLE] Terminate command received from server" -ForegroundColor Yellow
+            Write-Host "[LIFECYCLE] Client terminating gracefully..." -ForegroundColor Red
+            $global:shouldTerminate = $true
+            
+            return @{
+                success = $true
+                output = "Client terminating gracefully on server request"
+                error = $null
+                execution_time = 0.1
+            }
+        }
         
         Write-Host "[EXEC] $Command" -ForegroundColor Yellow
+        
+        # Update last command time for idle tracking
+        $global:lastCommandTime = Get-Date
         
         # Execute command and capture output
         $output = Invoke-Expression $Command 2>&1 | Out-String
@@ -257,15 +328,25 @@ if (-not (Register-Client)) {
     exit 1
 }
 
-# Main polling loop
+# Main polling loop with lifecycle management
 $consecutiveErrors = 0
 $maxConsecutiveErrors = 5
 
 Write-Host "Starting polling loop..." -ForegroundColor Green
+Write-Host "[LIFECYCLE] Monitoring idle timeout and server availability..." -ForegroundColor Cyan
 
 try {
-    while ($true) {
+    while ($true -and -not $shouldTerminate) {
         try {
+            # Check lifecycle conditions before polling
+            if (Test-IdleTimeout) {
+                break
+            }
+            
+            if (Test-404Limit) {
+                break
+            }
+            
             # Poll for pending commands
             $command = Get-PendingCommand
             
@@ -282,6 +363,12 @@ try {
                 if (-not $submitted) {
                     Write-Warning "Failed to submit result, but continuing..."
                 }
+                
+                # Check if command triggered termination
+                if ($shouldTerminate) {
+                    Write-Host "[LIFECYCLE] Termination triggered by command execution" -ForegroundColor Yellow
+                    break
+                }
             } else {
                 # No commands available, reset error counter
                 $consecutiveErrors = 0
@@ -292,7 +379,13 @@ try {
             Write-Error "Polling error ($consecutiveErrors/$maxConsecutiveErrors): $($_.Exception.Message)"
             
             if ($consecutiveErrors -ge $maxConsecutiveErrors) {
-                Write-Error "Too many consecutive errors. Exiting."
+                Write-Error "[LIFECYCLE] Too many consecutive errors. Exiting."
+                break
+            }
+            
+            # Check if termination was triggered during error handling
+            if ($shouldTerminate) {
+                Write-Host "[LIFECYCLE] Termination triggered during error handling" -ForegroundColor Yellow
                 break
             }
         }
@@ -305,6 +398,7 @@ catch {
     Write-Error "Fatal error in main loop: $($_.Exception.Message)"
 }
 finally {
-    Write-Host "Client shutting down..." -ForegroundColor Yellow
+    Write-Host "[LIFECYCLE] Client shutting down..." -ForegroundColor Yellow
+    Write-Host "Goodbye!" -ForegroundColor Green
 }
 """
