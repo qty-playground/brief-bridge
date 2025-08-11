@@ -13,10 +13,16 @@ You're developing on macOS with Claude Code, but need to write PowerShell 5.1 co
 
 ## Quick Start
 
+### Installation
+
+```bash
+pipx install brief-bridge
+```
+
 ### Start the Server
 
 ```bash
-python -m uvicorn brief_bridge.main:app --host 0.0.0.0 --port 8000
+brief-bridge
 ```
 
 This will start Brief Bridge on port 8000 with comprehensive API documentation.
@@ -83,7 +89,7 @@ GET  /                        # Complete API guide for AI assistants
 GET  /docs                    # Interactive Swagger documentation
 POST /tunnel/setup            # Setup ngrok tunnel for remote access
 GET  /tunnel/status           # Check tunnel status and public URL
-POST /commands/submit         # Submit command to client (supports base64 encoding)
+POST /commands/submit         # Submit command to client
 GET  /commands/              # List all commands with execution results
 POST /commands/poll           # Client polling endpoint (used by clients)
 GET  /commands/client/{id}    # Get pending commands for specific client
@@ -106,44 +112,16 @@ GET /install.ps1?client_id=my-client&idle_timeout_minutes=5&poll_interval=3&debu
 - `poll_interval` - Command polling interval in seconds (default: 5)  
 - `debug` - Enable verbose debug output (default: false)
 
-### Base64 Command Encoding
+### Command Submission
 
-For commands with complex quotes, multi-line content, or special characters, use base64 encoding to avoid shell escaping issues:
+Simple command submission via JSON:
 
-**When to use base64 encoding:**
-- Commands longer than 3 lines
-- Commands with both single and double quotes
-- Scripts with complex syntax or special characters
-
-**Example without encoding (problematic):**
 ```json
 {
   "target_client_id": "my-client",
-  "command_content": "Write-Host \"Hello 'World'\" -ForegroundColor Green",
-  "command_type": "powershell"
+  "command_content": "Get-Process | Where-Object {$_.ProcessName -like 'powershell*'}",
+  "command_type": "shell"
 }
-```
-
-**Example with base64 encoding (recommended):**
-```json
-{
-  "target_client_id": "my-client", 
-  "command_content": "V3JpdGUtSG9zdCAiSGVsbG8gJ1dvcmxkJyIgLUZvcmVncm91bmRDb2xvciBHcmVlbg==",
-  "command_type": "powershell",
-  "encoding": "base64"
-}
-```
-
-**Multi-line script example:**
-```bash
-# Original script:
-# if ($true) {
-#     Write-Host "Line 1"
-#     Write-Host "Line 2"  
-# }
-
-# Base64 encoded:
-echo 'aWYgKCR0cnVlKSB7CiAgICBXcml0ZS1Ib3N0ICJMaW5lIDEiCiAgICBXcml0ZS1Ib3N0ICJMaW5lIDIiIAp9' | base64 -d
 ```
 
 ## Client Lifecycle Management
@@ -199,7 +177,7 @@ brief-bridge/
 
 ### Development Server
 ```bash
-python -m uvicorn brief_bridge.main:app --reload --host 0.0.0.0 --port 8000
+brief-bridge --reload --external
 ```
 
 ## Status
