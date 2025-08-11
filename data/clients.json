@@ -28,5 +28,10 @@
     "client_id": "active-client",
     "name": "test-client-active-client",
     "status": "online"
+  },
+  "my-test-client": {
+    "client_id": "my-test-client",
+    "name": "PowerShell Client",
+    "status": "online"
   }
 }

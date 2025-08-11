@@ -118,9 +118,8 @@ class SubmitCommandUseCase:
         # Business rule: command.unique_id - create command with unique ID
         command = Command.create_new_command(
             target_client_id=request.target_client_id,
-            content=decoded_content,  # Use decoded content
-            command_type=request.command_type or "shell",
-            encoding=request.encoding  # Store original encoding info
+            content=decoded_content,  # Use command content directly
+            command_type=request.command_type or "shell"
         )
         
         # Business rule: command.persistence - save command to repository

@@ -22,14 +22,13 @@ class Command:
     execution_time: Optional[float] = None  # Execution time in seconds
     
     @classmethod
-    def create_new_command(cls, target_client_id: str, content: str, command_type: str = "shell", encoding: Optional[str] = None) -> "Command":
+    def create_new_command(cls, target_client_id: str, content: str, command_type: str = "shell") -> "Command":
         """Business rule: command.unique_id - create new command with generated unique ID"""
         return cls(
             command_id=str(uuid.uuid4()),
             target_client_id=target_client_id,
             content=content,
             type=command_type,
-            encoding=encoding,
             status="pending",
             created_at=datetime.utcnow()
         )

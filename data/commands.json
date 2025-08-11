@@ -481,5 +481,31 @@
     "result": null,
     "error": null,
     "execution_time": null
+  },
+  "d42d9185-2471-4412-b495-d6e8c4fdfc47": {
+    "command_id": "d42d9185-2471-4412-b495-d6e8c4fdfc47",
+    "target_client_id": "my-test-client",
+    "content": "Write-Host 'Hello World from Brief Bridge!' -ForegroundColor Green",
+    "type": "shell",
+    "status": "completed",
+    "created_at": "2025-08-11T07:19:10.478588",
+    "started_at": "2025-08-11T07:19:13.830275",
+    "completed_at": "2025-08-11T07:19:16.844016",
+    "result": "",
+    "error": null,
+    "execution_time": 2.4314313
+  },
+  "aa2166a2-2495-4cdb-82de-35e2100a89f4": {
+    "command_id": "aa2166a2-2495-4cdb-82de-35e2100a89f4",
+    "target_client_id": "my-test-client",
+    "content": "terminate",
+    "type": "shell",
+    "status": "completed",
+    "created_at": "2025-08-11T07:51:10.496690",
+    "started_at": "2025-08-11T07:51:15.412301",
+    "completed_at": "2025-08-11T07:51:15.899224",
+    "result": "Client terminating gracefully on server request",
+    "error": null,
+    "execution_time": 0.1
   }
 }
