@@ -1,22 +1,28 @@
 """Given client is online - Screaming Architecture naming"""
 from conftest import ScenarioContext, BDDPhase
-from brief_bridge.entities.client import Client
-from brief_bridge.repositories.client_repository import InMemoryClientRepository
-import asyncio
 
 def invoke(ctx: ScenarioContext) -> None:
     """
-    Business rule: client.status_online - setup online client
+    Business rule: client.status_online - setup online client via API
     Command Pattern implementation for BDD step
     """
-    # GREEN Stage 1: Production chain with hardcoded behavior
-    if not hasattr(ctx, 'client_repository'):
-        ctx.client_repository = InMemoryClientRepository()
+    # GREEN Stage 1: Production chain using API calls
+    # Register the client (defaults to online status)
+    register_request = {
+        "client_id": ctx.client_id,
+        "name": f"test-client-{ctx.client_id}"
+    }
     
-    # Create online client
-    client = Client.register_new_client(ctx.client_id, None)
-    client.status = "online"  # Ensure online status
+    response = ctx.test_client.post("/clients/register", json=register_request)
+    assert response.status_code == 200, f"Client registration should succeed, got {response.status_code}"
     
-    # Save to repository
-    asyncio.run(ctx.client_repository.save_registered_client(client))
-    ctx.test_client = client
+    # Ensure client is online (clients default to online after registration) 
+    import asyncio
+    
+    async def ensure_online():
+        client = await ctx.client_repository.find_client_by_id(ctx.client_id)
+        if client:
+            client.status = "online"  # Ensure online status
+            await ctx.client_repository.save_registered_client(client)
+    
+    asyncio.run(ensure_online())

@@ -1,27 +1,25 @@
 """Given client is registered with status - Screaming Architecture naming"""
 from conftest import ScenarioContext, BDDPhase
-from brief_bridge.entities.client import Client
-from brief_bridge.repositories.client_repository import InMemoryClientRepository
-import asyncio
 
 def invoke(ctx: ScenarioContext) -> None:
     """
-    Business rule: client.registration - create test client with specific status
+    Business rule: client.registration - setup registered client via API
     Command Pattern implementation for BDD step
     """
-    # Phase already set by wrapper function - ctx.phase = BDDPhase.GIVEN
-    # Can access input state set in GIVEN phase
+    # GREEN Stage 2: Production chain using shared test client
     
-    # GREEN Stage 1: Production chain with hardcoded values
-    if not hasattr(ctx, 'client_repository'):
-        ctx.client_repository = InMemoryClientRepository()
+    # Register client via API
+    register_request = {
+        "client_id": ctx.client_id,
+        "name": f"test-client-{ctx.client_id}"
+    }
     
-    # Create real client with hardcoded implementation
-    client = Client.register_new_client(ctx.client_id, None)
-    client.status = ctx.status  # Use requested status
+    response = ctx.test_client.post("/clients/register", json=register_request)
     
-    # Save to repository
-    asyncio.run(ctx.client_repository.save_registered_client(client))
+    # Store registration response
+    ctx.register_response = response
+    ctx.register_response_status = response.status_code
+    ctx.register_response_data = response.json() if response.status_code == 200 else None
     
-    # Store for later steps
-    ctx.test_client = client
+    # Verify registration succeeded
+    assert response.status_code == 200, f"Client registration should succeed, got {response.status_code}"

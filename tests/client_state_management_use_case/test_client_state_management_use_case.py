@@ -21,7 +21,6 @@ from . import then_client_should_be_marked_as
 from . import then_client_status_should_be_updated_to
 from . import then_command_should_be_created_with_type
 from . import then_command_should_be_queued
-from . import then_command_submission_should_be_successful
 from . import then_response_should_include
 from . import then_response_should_not_include
 

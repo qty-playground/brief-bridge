@@ -1,28 +1,23 @@
 """When server submits terminate command - Screaming Architecture naming"""
 from conftest import ScenarioContext, BDDPhase
-from brief_bridge.entities.command import Command
-from brief_bridge.repositories.command_repository import InMemoryCommandRepository
-import asyncio
 
 def invoke(ctx: ScenarioContext) -> None:
     """
-    Execute terminate command submission through server
+    Execute terminate command submission through server API
     Command Pattern implementation for BDD step
     """
-    # GREEN Stage 1: Production chain with hardcoded behavior
-    if not hasattr(ctx, 'command_repository'):
-        ctx.command_repository = InMemoryCommandRepository()
+    # GREEN Stage 1: Production chain using shared test client
     
-    async def submit_terminate():
-        # Create terminate command
-        command = Command.create_new_command(
-            target_client_id=ctx.client_id,
-            content="terminate",
-            command_type="terminate"
-        )
-        
-        # Save command (queue it)
-        await ctx.command_repository.save_command(command)
-        ctx.created_command = command
+    # Submit terminate command via API
+    command_request = {
+        "target_client_id": ctx.client_id,
+        "command_content": "terminate",
+        "command_type": "terminate"
+    }
     
-    asyncio.run(submit_terminate())
+    response = ctx.test_client.post("/commands/submit", json=command_request)
+    
+    # Store response for verification
+    ctx.submit_response = response
+    ctx.submit_response_status = response.status_code
+    ctx.submit_response_data = response.json() if response.status_code == 200 else None

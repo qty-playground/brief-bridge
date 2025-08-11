@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 import os
 from brief_bridge.web.schemas import SubmitCommandRequestSchema, SubmitCommandResponseSchema, CommandSchema, SubmitResultRequestSchema, SubmitResultResponseSchema
-from brief_bridge.web.dependencies import get_submit_command_use_case, get_command_repository
+from brief_bridge.web.dependencies import get_submit_command_use_case, get_command_repository, get_client_repository
 from brief_bridge.use_cases.submit_command_use_case import SubmitCommandUseCase, CommandSubmissionRequest
 from brief_bridge.repositories.command_repository import CommandRepository
+from brief_bridge.repositories.client_repository import ClientRepository
 
 router = APIRouter(prefix="/commands", tags=["commands"])
 
@@ -107,9 +108,16 @@ async def get_all_commands(
 @router.get("/client/{client_id}", response_model=List[CommandSchema])
 async def get_commands_by_client_id(
     client_id: str,
-    repository: CommandRepository = Depends(get_command_repository)
+    repository: CommandRepository = Depends(get_command_repository),
+    client_repository: ClientRepository = Depends(get_client_repository)
 ) -> List[CommandSchema]:
     """API endpoint: Client retrieves pending commands and marks them as processing"""
+    # Update client activity when polling
+    client = await client_repository.find_client_by_id(client_id)
+    if client:
+        client.update_activity()
+        await client_repository.save_registered_client(client)
+    
     # Get only pending commands for this client
     pending_commands = await repository.get_pending_commands_for_client(client_id)
     

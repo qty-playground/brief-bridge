@@ -3,6 +3,7 @@
 import pytest
 from enum import Enum
 from typing import Any, Dict
+from fastapi.testclient import TestClient
 
 
 class BDDPhase(Enum):
@@ -44,6 +45,47 @@ class ScenarioContext:
         object.__setattr__(self, '_input_state', {})
         object.__setattr__(self, '_results', {})
         object.__setattr__(self, '_phase_locked', False)
+        
+        # Initialize shared test infrastructure
+        self._init_test_client()
+    
+    def _init_test_client(self) -> None:
+        """Initialize test client with fresh repositories shared across all steps"""
+        from brief_bridge.main import app
+        from brief_bridge.repositories.client_repository import InMemoryClientRepository
+        from brief_bridge.repositories.command_repository import InMemoryCommandRepository
+        from brief_bridge.web.dependencies import get_client_repository, get_command_repository
+        
+        # Create fresh repositories for this scenario
+        client_repo = InMemoryClientRepository()
+        command_repo = InMemoryCommandRepository()
+        
+        # Override dependencies to use test repositories
+        app.dependency_overrides[get_client_repository] = lambda: client_repo
+        app.dependency_overrides[get_command_repository] = lambda: command_repo
+        
+        # Create test client
+        test_client = TestClient(app)
+        
+        # Store in internal state (accessible to all steps)
+        object.__setattr__(self, '_test_client', test_client)
+        object.__setattr__(self, '_client_repository', client_repo)
+        object.__setattr__(self, '_command_repository', command_repo)
+    
+    @property
+    def test_client(self) -> TestClient:
+        """Get shared test client for this scenario"""
+        return self._test_client
+    
+    @property
+    def client_repository(self):
+        """Get shared client repository for this scenario (for direct access when needed)"""
+        return self._client_repository
+        
+    @property
+    def command_repository(self):
+        """Get shared command repository for this scenario (for direct access when needed)"""
+        return self._command_repository
     
     @property
     def phase(self) -> BDDPhase:
@@ -166,12 +208,20 @@ class ScenarioContext:
                           and attr != 'phase']  # Skip phase property
         for attr in attrs_to_remove:
             delattr(self, attr)
+    
+    def cleanup(self) -> None:
+        """Clean up test infrastructure"""
+        from brief_bridge.main import app
+        app.dependency_overrides.clear()
 
 
 @pytest.fixture
 def context() -> ScenarioContext:
     """Provide fresh ScenarioContext instance for each test scenario"""
-    return ScenarioContext()
+    ctx = ScenarioContext()
+    yield ctx
+    # Cleanup after test
+    ctx.cleanup()
 
 
 @pytest.fixture
