@@ -155,25 +155,12 @@ curl -X POST http://localhost:8000/commands/submit \
 
 ## Development
 
-Brief Bridge is developed using BDD (Behavior-Driven Development) with comprehensive test coverage.
+Brief Bridge uses systematic BDD (Behavior-Driven Development) with AI-assisted implementation.
 
-### Running Tests
-```bash
-python -m pytest tests/ -v
-```
+### For Developers
+See **[Development Guide](prompts/README.md)** for complete BDD implementation workflow.
 
-### Project Structure
-```
-brief-bridge/
-├── brief_bridge/           # Application implementation
-│   ├── entities/           # Business entities
-│   ├── repositories/       # Data persistence layer  
-│   ├── use_cases/          # Business logic
-│   └── web/               # FastAPI REST API
-├── tests/                  # BDD tests with pytest-bdd
-│   └── client_state_management_use_case/  # Feature-specific tests
-└── data/                   # Runtime data storage
-```
+Quick start: `@prompts/00-overview.md.prompt`
 
 ### Development Server
 ```bash
