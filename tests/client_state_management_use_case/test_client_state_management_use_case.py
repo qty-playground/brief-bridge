@@ -129,22 +129,19 @@ def then_client_status_should_remain_wrapper(context, status):
 def then_client_should_be_marked_as_wrapper(context, status):
     """Delegate to then_client_should_be_marked_as step module"""
     context.phase = BDDPhase.THEN
-    context.expected_status = status
-    then_client_should_be_marked_as.invoke(context)
+    then_client_should_be_marked_as.invoke(context, expected_status=status)
 
 @then(parsers.parse('client status should be updated to "{status}"'))
 def then_client_status_should_be_updated_to_wrapper(context, status):
     """Delegate to then_client_status_should_be_updated_to step module"""
     context.phase = BDDPhase.THEN
-    context.expected_status = status
-    then_client_status_should_be_updated_to.invoke(context)
+    then_client_status_should_be_updated_to.invoke(context, expected_status=status)
 
 @then(parsers.parse('command should be created with type "{command_type}"'))
 def then_command_should_be_created_with_type_wrapper(context, command_type):
     """Delegate to then_command_should_be_created_with_type step module"""
     context.phase = BDDPhase.THEN
-    context.expected_command_type = command_type
-    then_command_should_be_created_with_type.invoke(context)
+    then_command_should_be_created_with_type.invoke(context, expected_command_type=command_type)
 
 @then('command should be queued for client to receive')
 def then_command_should_be_queued_wrapper(context):
@@ -162,12 +159,10 @@ def then_command_submission_should_be_successful_wrapper(context):
 def then_response_should_include_wrapper(context, client_id):
     """Delegate to then_response_should_include step module"""
     context.phase = BDDPhase.THEN
-    context.expected_client_id = client_id
-    then_response_should_include.invoke(context)
+    then_response_should_include.invoke(context, expected_client_id=client_id)
 
 @then(parsers.parse('response should not include "{client_id}"'))
 def then_response_should_not_include_wrapper(context, client_id):
     """Delegate to then_response_should_not_include step module"""
     context.phase = BDDPhase.THEN
-    context.excluded_client_id = client_id
-    then_response_should_not_include.invoke(context)
+    then_response_should_not_include.invoke(context, excluded_client_id=client_id)

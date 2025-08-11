@@ -23,6 +23,18 @@ class Client:
     def update_activity(self) -> None:
         """Business rule: client.activity_tracking - update client last activity timestamp"""
         self.last_seen = self._current_utc_time()
+        # Business rule: client.auto_recovery - offline clients become online when they poll
+        if self.status == "offline":
+            self.status = "online"
+    
+    def check_and_update_status(self, threshold_seconds: int) -> None:
+        """Business rule: client.offline_detection - check if client should be marked offline"""
+        if self.last_seen is None:
+            return
+            
+        time_since_last_seen = (self._current_utc_time() - self.last_seen).total_seconds()
+        if time_since_last_seen > threshold_seconds:
+            self.status = "offline"
     
     @staticmethod
     def _current_utc_time() -> datetime:
