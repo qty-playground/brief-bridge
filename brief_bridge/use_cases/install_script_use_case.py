@@ -49,11 +49,14 @@ $DebugMode = ${str(debug).lower()}
 # Cross-platform client ID detection
 {client_id_logic}
 
+# Generate unique filename with UUID to avoid conflicts with multiple clients
+$ScriptUuid = [System.Guid]::NewGuid().ToString("N").Substring(0,8)
+
 # Download client script to temp location (cross-platform path)
 if ($IsLinux -or $IsMacOS) {{
-    $TempPath = "/tmp/BriefBridgeClient.ps1"
+    $TempPath = "/tmp/BriefBridgeClient_$ScriptUuid.ps1"
 }} else {{
-    $TempPath = "$env:TEMP\\BriefBridgeClient.ps1"
+    $TempPath = "$env:TEMP\\BriefBridgeClient_$ScriptUuid.ps1"
 }}
 Write-Host "Downloading client script to $TempPath" -ForegroundColor Yellow
 
