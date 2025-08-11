@@ -1,6 +1,6 @@
 # Brief Bridge
 
-A lightweight tool that bridges AI coding assistants with distributed clients through HTTP polling.
+A production-ready tool that bridges AI coding assistants with distributed clients through HTTP polling, featuring advanced client lifecycle management and comprehensive monitoring.
 
 ## Real-World Example
 
@@ -13,91 +13,98 @@ You're developing on macOS with Claude Code, but need to write PowerShell 5.1 co
 
 ## Quick Start
 
-### Installation with pipx (Recommended)
-
-```bash
-pipx install brief-bridge
-```
-
 ### Start the Server
 
 ```bash
-brief-bridge
+python -m uvicorn brief_bridge.main:app --host 0.0.0.0 --port 8000
 ```
 
-This will start Brief Bridge on port 2266 with helpful guidance for AI assistants.
+This will start Brief Bridge on port 8000 with comprehensive API documentation.
+
+### Setup Public Tunnel (for Remote Clients)
+
+```bash
+curl -X POST http://localhost:8000/tunnel/setup -H "Content-Type: application/json" -d '{"provider": "ngrok"}'
+```
 
 ### For AI Assistants
 
-Tell your AI assistant: **"Please visit http://localhost:2266/ to see what APIs are available"**
+Tell your AI assistant: **"Please visit http://localhost:8000/ to see what APIs are available"**
 
 **Important**: AI assistants should use `localhost` URLs for all API calls. Only remote clients need tunnel URLs for installation.
 
 ### Client Installation
 
-**Windows PowerShell**
+**Windows PowerShell (Basic)**
 ```powershell
-irm http://localhost:2266/install.ps1 | iex
+irm https://your-tunnel-url/install.ps1 | iex
+```
+
+**Windows PowerShell (with Custom Timeout)**
+```powershell
+irm "https://your-tunnel-url/install.ps1?client_id=my-client&idle_timeout_minutes=5" | iex
 ```
 
 **Linux/macOS Bash**
 ```bash
-curl -sSL http://localhost:2266/install.sh | bash
+curl -sSL https://your-tunnel-url/install.sh | bash
 ```
 
-## What it does
+## Key Features
 
-- AI coding assistants execute commands on remote machines
-- Zero installation - pure shell scripts
-- Works behind firewalls via tunneling
-- Collect runtime context from heterogeneous environments
+- **Smart Client Lifecycle Management**
+  - Configurable idle timeout (default 10 minutes)
+  - Auto-stop after 3 consecutive connection failures
+  - Server-side terminate command support
+  - UUID-based unique temporary files
+- **Real-time Monitoring**
+  - Client activity tracking with `last_seen` timestamps
+  - Live status monitoring and health checks
+- **Zero Installation** - Pure shell scripts with automatic cleanup
+- **Firewall Friendly** - Works behind corporate firewalls via tunneling
+- **Multi-Platform** - Windows PowerShell, Linux/macOS Bash support
 
 ## Architecture
 
 ```
-AI Assistant → HTTP Server → Public Endpoint → Clients (polling)
+AI Assistant → HTTP Server (localhost) → Public Tunnel → Remote Clients (polling)
 ```
 
-## 🏗️ Development Architecture Choice
-
-Brief Bridge supports **two architecture approaches** for implementation:
-
-### 🚀 **Simplified Architecture** (Recommended)
-**Best for**: Most projects, rapid development, learning BDD
-- Pattern: `Framework ↔ UseCase ↔ Entity/Repository`
-- Faster development with good separation of concerns
-- Full BDD support with ScenarioContext phase management
-
-### 🏛️ **Clean Architecture** 
-**Best for**: Complex business logic, long-term strategic systems  
-- Pattern: `Domain → Application → Infrastructure`
-- Maximum flexibility and maintainability
-- Full BDD support with ScenarioContext phase management
-
-### 🎯 Quick Decision
-**Choose Simplified if**:
-- Small-medium project (< 10 business entities)
-- Team new to Clean Architecture
-- Need fast delivery
-
-**Choose Clean Architecture if**:
-- Complex business rules and workflows
-- Long-term strategic application
-- Team experienced with layered architecture
-
-> **Both architectures include the same BDD testing approach** with pytest-bdd, ScenarioContext phase management (GIVEN→WHEN→THEN enforcement), and Screaming Architecture test organization.
+**Design Philosophy**: Simplified Architecture with BDD testing
+- Fast development with clear separation of concerns  
+- Use cases handle business logic
+- Repositories manage data persistence
+- Comprehensive BDD test coverage with pytest-bdd
 
 ## API
 
 ```bash
-GET  /                     # Complete API guide for AI assistants
-GET  /docs                 # Interactive Swagger documentation
-POST /tunnel/setup         # Setup ngrok tunnel  
-POST /commands/submit      # Submit command to client (supports base64 encoding)
-GET  /commands/            # List all commands and results
-GET  /clients/             # List registered clients
-GET  /install.ps1          # PowerShell client install script
+GET  /                        # Complete API guide for AI assistants  
+GET  /docs                    # Interactive Swagger documentation
+POST /tunnel/setup            # Setup ngrok tunnel for remote access
+GET  /tunnel/status           # Check tunnel status and public URL
+POST /commands/submit         # Submit command to client (supports base64 encoding)
+GET  /commands/              # List all commands with execution results
+POST /commands/poll           # Client polling endpoint (used by clients)
+GET  /commands/client/{id}    # Get pending commands for specific client
+GET  /clients/               # List registered clients with last_seen timestamps
+POST /clients/register        # Register new client (used by install scripts)
+GET  /install.ps1            # PowerShell client install script with parameters
+GET  /install.sh             # Bash client install script
 ```
+
+### PowerShell Install Script Parameters
+
+```bash
+GET /install.ps1?client_id=my-client&idle_timeout_minutes=5&poll_interval=3&debug=true
+```
+
+**Available Parameters:**
+- `client_id` - Custom client identifier (defaults to hostname)
+- `client_name` - Human-readable client name
+- `idle_timeout_minutes` - Auto-shutdown timeout in minutes (default: 10)
+- `poll_interval` - Command polling interval in seconds (default: 5)  
+- `debug` - Enable verbose debug output (default: false)
 
 ### Base64 Command Encoding
 
@@ -139,51 +146,65 @@ For commands with complex quotes, multi-line content, or special characters, use
 echo 'aWYgKCR0cnVlKSB7CiAgICBXcml0ZS1Ib3N0ICJMaW5lIDEiCiAgICBXcml0ZS1Ib3N0ICJMaW5lIDIiIAp9' | base64 -d
 ```
 
-### CLI Options
+## Client Lifecycle Management
 
+Brief Bridge includes sophisticated client lifecycle management:
+
+### Automatic Timeout Protection
+- **Idle Timeout**: Clients automatically terminate after configurable period (default: 10 minutes)
+- **Connection Failure Protection**: Auto-stop after 3 consecutive HTTP 404 errors
+- **Server Terminate**: Graceful shutdown via `terminate` command from server
+
+### Monitoring Features
+- **Real-time Status**: `last_seen` timestamps for all clients
+- **Health Monitoring**: Track client activity and connection health
+- **Unique Sessions**: UUID-based temporary files prevent conflicts
+
+### Example: Send Terminate Command
 ```bash
-brief-bridge --help        # Show all options
-brief-bridge --port 8080   # Custom port
-brief-bridge --external    # Accept external connections
-brief-bridge --reload      # Development mode with auto-reload
+curl -X POST http://localhost:8000/commands/submit \
+  -H "Content-Type: application/json" \
+  -d '{"target_client_id": "my-client", "command_content": "terminate", "command_type": "shell"}'
 ```
 
 ## Use Cases
 
-- **Cross-platform development**: Write PowerShell on macOS, test on Windows
-- **Real environment testing**: Debug issues in actual target environments  
-- **Runtime context collection**: Get OS-specific logs, error messages, system info
-- **Compatibility verification**: Ensure scripts work across different OS versions
+- **Cross-platform Development**: Write PowerShell on macOS, test on Windows
+- **Production Debugging**: Execute diagnostic commands on live systems  
+- **Automated Testing**: Run tests across heterogeneous environments
+- **System Administration**: Manage distributed infrastructure remotely
+- **Compliance Auditing**: Collect system information across multiple machines
 
 ## Development
 
-Brief Bridge is developed using BDD (Behavior-Driven Development), Clean Architecture, and Test-Driven Development methodologies.
+Brief Bridge is developed using BDD (Behavior-Driven Development) with comprehensive test coverage.
 
-### For Developers
-- **[Development Guide](docs/DEVELOPMENT.md)** - Comprehensive development documentation
-- **[Domain Model](docs/domain-model.md)** - Business entities and rules
-- **[Architecture Structure](docs/clean-architecture-structure.md)** - Code organization
-- **[User Stories](docs/user-stories/)** - Technical specifications
-
-### For AI Assistants  
-- **[Implementation Prompts](prompts/README.md)** - Systematic BDD implementation guide
-- **Quick Start**: `@prompts/00-overview.md.prompt`
+### Running Tests
+```bash
+python -m pytest tests/ -v
+```
 
 ### Project Structure
 ```
 brief-bridge/
-├── brief_bridge/           # Clean Architecture implementation
-│   ├── domain/             # Business logic
-│   ├── application/        # Use cases  
-│   └── infrastructure/     # External concerns
+├── brief_bridge/           # Application implementation
+│   ├── entities/           # Business entities
+│   ├── repositories/       # Data persistence layer  
+│   ├── use_cases/          # Business logic
+│   └── web/               # FastAPI REST API
 ├── tests/                  # BDD tests with pytest-bdd
-├── docs/                   # Design documentation
-└── prompts/                # AI assistant implementation guides
+│   └── client_state_management_use_case/  # Feature-specific tests
+└── data/                   # Runtime data storage
+```
+
+### Development Server
+```bash
+python -m uvicorn brief_bridge.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ## Status
 
-🚧 **MVP in development** - Core polling mechanism and command execution
+✅ **Production Ready** - Full client lifecycle management, monitoring, and tunnel support
 
 ## License
 
