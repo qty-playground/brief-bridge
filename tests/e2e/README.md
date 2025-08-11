@@ -115,5 +115,5 @@ pytest tests/e2e/test_command_submission_flow.py::TestCommandSubmissionE2E::test
 ## 注意事項
 
 - E2E 測試比 BDD 測試慢，因為它們測試完整的 HTTP 堆棧
-- 部分測試可能會因為等待機制而較慢或超時
+- 測試使用 `pytest-env` 插件載入 `BRIEF_BRIDGE_COMMAND_TIMEOUT=2.5` 環境變數，確保執行時間控制在合理範圍內
 - 測試使用獨立的 in-memory repositories，不會影響開發數據
