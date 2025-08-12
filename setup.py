@@ -13,7 +13,7 @@ setup(
     url="https://github.com/qty-playground/brief-bridge",
     packages=find_packages(),
     package_data={
-        "brief_bridge": ["../static/*"],
+        "brief_bridge": ["../static/*", "templates/*"],
     },
     include_package_data=True,
     python_requires=">=3.8",
