@@ -32,6 +32,7 @@ setup(
             "pytest-bdd==8.1.0",
             "pytest-env==1.1.5",
             "httpx==0.28.1",
+            "testcontainers==4.12.0",
         ],
         "dev": [
             "pytest==8.4.1",
@@ -39,6 +40,7 @@ setup(
             "pytest-bdd==8.1.0",
             "pytest-env==1.1.5",
             "httpx==0.28.1",
+            "testcontainers==4.12.0",
         ],
     },
     entry_points={
