@@ -258,6 +258,10 @@ execute_bash_command() {
         local result="{\"success\": false, \"output\": \"$combined_output\", \"error\": \"$error_msg\", \"execution_time\": $execution_time}"
     fi
     
+    if [ "$DEBUG_MODE" = "true" ]; then
+        echo "[DEBUG] Generated result JSON: $result" >&2
+    fi
+    
     echo "$result"
     return 0
 }
@@ -300,6 +304,12 @@ submit_command_result() {
 }
 RESULT_EOF
     
+    # Log the JSON payload being sent
+    if [ "$DEBUG_MODE" = "true" ]; then
+        echo "[DEBUG] JSON payload for command $command_id:" >&2
+        cat "$json_file" >&2
+    fi
+    
     # Submit using curl with @file
     local response
     if response=$(curl -s -w 'HTTPSTATUS:%{http_code}' --connect-timeout 30 --max-time 30 \
@@ -308,6 +318,7 @@ RESULT_EOF
         "$API_BASE/commands/result" 2>/dev/null); then
         
         local http_status=$(echo "$response" | grep -o 'HTTPSTATUS:[0-9]*' | cut -d: -f2)
+        local body_content=$(echo "$response" | sed 's/HTTPSTATUS:[0-9]*$//')
         
         if [ "$http_status" -ge 200 ] && [ "$http_status" -lt 300 ]; then
             echo "[RESULT] Submitted result for command $command_id"
@@ -315,6 +326,10 @@ RESULT_EOF
             return 0
         else
             echo "Failed to submit result: HTTP $http_status" >&2
+            echo "[ERROR] Server response: $body_content" >&2
+            if [ "$DEBUG_MODE" = "true" ]; then
+                echo "[DEBUG] Full response: $response" >&2
+            fi
         fi
     else
         echo "Failed to submit result: curl failed" >&2
