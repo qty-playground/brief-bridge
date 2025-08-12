@@ -1,4 +1,5 @@
 import pytest
+import docker
 from fastapi.testclient import TestClient
 from testcontainers.core.container import DockerContainer
 
@@ -30,6 +31,8 @@ def test_client():
 @pytest.fixture
 def powershell_container():
     """PowerShell容器fixture，使用sleep確保容器保持運行狀態供exec命令使用"""
+    _ensure_docker_is_available()
+    
     try:
         with DockerContainer("powershell-image").with_command("sleep 30") as container:
             yield container
@@ -41,6 +44,15 @@ def powershell_container():
             pytest.fail(f"PowerShell容器啟動失敗: {container_error}")
     except KeyboardInterrupt:
         pytest.skip("測試被用戶中斷")
+
+
+def _ensure_docker_is_available() -> None:
+    """確保Docker可用，否則跳過測試"""
+    try:
+        docker_client = docker.from_env()
+        docker_client.ping()
+    except Exception:
+        pytest.skip("Docker不可用，跳過容器測試")
 
 
 def _is_image_not_found_error(error_message: str) -> bool:

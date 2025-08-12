@@ -1,3 +1,7 @@
+import pytest
+
+
+@pytest.mark.container
 class TestPowerShellContainer:
     
     def test_can_execute_basic_powershell_commands(self, powershell_container):
