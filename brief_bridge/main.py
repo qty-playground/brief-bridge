@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import os
@@ -193,6 +193,7 @@ async def root(request: Request):
         },
         "documentation": {
             "full_guide": f"{base_url}/static/index.html",
+            "markdown_guide": f"{base_url}/prompts.md",
             "swagger_docs": f"{base_url}/docs",
             "health_check": f"{base_url}/health"
         },
@@ -202,3 +203,25 @@ async def root(request: Request):
             "tunnel_status": f"{base_url}/tunnel/status"
         }
     }
+
+
+@app.get("/prompts.md",
+         response_class=PlainTextResponse,
+         summary="AI Assistant Prompts Guide",
+         description="Markdown documentation guide for AI assistants")
+async def get_prompts_md():
+    """
+    Get markdown documentation for AI assistants.
+    
+    Returns the prompts.md file content dynamically loaded from filesystem.
+    """
+    prompts_file_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "prompts.md")
+    
+    try:
+        with open(prompts_file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return content
+    except FileNotFoundError:
+        return "# Brief Bridge Prompts Guide\n\nPrompts guide file not found."
+    except Exception as e:
+        return f"# Brief Bridge Prompts Guide\n\nError loading prompts guide: {str(e)}"
