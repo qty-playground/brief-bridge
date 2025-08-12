@@ -267,18 +267,62 @@ submit_command_result() {
     local command_id="$1"
     local result="$2"
     
-    local body="{\"command_id\": \"$command_id\", $(echo "$result" | sed 's/^{//; s/}$//')}"
+    # Create temp file for JSON payload
+    local json_file="/tmp/bb_result_$$"
     
-    local response
-    response=$(make_http_request "$API_BASE/commands/result" "POST" "$body")
+    # Parse individual fields from result JSON
+    local success=$(echo "$result" | grep -o '"success":[^,}]*' | cut -d: -f2 | tr -d ' ')
+    local output=$(echo "$result" | grep -o '"output":"[^"]*"' | cut -d'"' -f4)
+    local error=$(echo "$result" | grep -o '"error":"[^"]*"' | cut -d'"' -f4)
+    local execution_time=$(echo "$result" | grep -o '"execution_time":[^,}]*' | cut -d: -f2 | tr -d ' ')
     
-    if [ $? -eq 0 ]; then
-        echo "[RESULT] Submitted result for command $command_id"
-        return 0
+    # Handle null values and escape for JSON
+    if [ "$error" = "null" ] || [ -z "$error" ]; then
+        error_json="null"
     else
-        echo "Failed to submit result for command $command_id" >&2
-        return 1
+        error_json="\"$(echo "$error" | sed 's/\\/\\\\/g; s/"/\\"/g')\""
     fi
+    
+    if [ -z "$output" ]; then
+        output_json="\"\""
+    else
+        output_json="\"$(echo "$output" | sed 's/\\/\\\\/g; s/"/\\"/g')\""
+    fi
+    
+    # Write JSON to temp file
+    cat > "$json_file" << EOF
+{
+  "command_id": "$command_id",
+  "success": $success,
+  "output": $output_json,
+  "error": $error_json,
+  "execution_time": $execution_time
+}
+EOF
+    
+    # Submit using curl with @file
+    local response
+    if response=$(curl -s -w 'HTTPSTATUS:%{http_code}' --connect-timeout 30 --max-time 30 \
+        -X POST -H 'Content-Type: application/json' \
+        -d @"$json_file" \
+        "$API_BASE/commands/result" 2>/dev/null); then
+        
+        local http_status=$(echo "$response" | grep -o 'HTTPSTATUS:[0-9]*' | cut -d: -f2)
+        
+        if [ "$http_status" -ge 200 ] && [ "$http_status" -lt 300 ]; then
+            echo "[RESULT] Submitted result for command $command_id"
+            rm -f "$json_file"
+            return 0
+        else
+            echo "Failed to submit result: HTTP $http_status" >&2
+        fi
+    else
+        echo "Failed to submit result: curl failed" >&2
+    fi
+    
+    # Cleanup and return failure
+    rm -f "$json_file"
+    return 1
 }
 
 # Function to poll for commands
