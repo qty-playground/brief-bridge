@@ -17,7 +17,7 @@ jobs:
         pip install .[test]
     - name: Build PowerShell Docker image for tests
       run: |
-        docker build -f tests/Dockerfile -t powershell-image tests/
+        docker build --platform=linux/amd64 -f tests/Dockerfile -t powershell-image tests/
       continue-on-error: false
     - name: Run tests
       run: pytest -vvs

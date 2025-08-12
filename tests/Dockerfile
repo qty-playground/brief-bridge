@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 mcr.microsoft.com/powershell:latest
+FROM mcr.microsoft.com/powershell:latest
 
 # Set working directory
 WORKDIR /app
