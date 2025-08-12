@@ -85,4 +85,5 @@ def test_system_health_and_api_availability(client):
     response_data = api_root_response.json()
     assert response_data["service"] == "Brief Bridge"
     assert response_data["status"] == "active"
-    assert "ai_assistant_guide" in response_data
+    assert "documentation" in response_data
+    assert "prompts.md" in response_data["documentation"]["comprehensive_guide"]

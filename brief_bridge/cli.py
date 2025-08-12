@@ -52,7 +52,7 @@ def print_running_info(port: int, host: str = "localhost"):
 
 📍 Connection Info:
    • API Guide:      http://{host}:{port}/
-   • Documentation:  http://{host}:{port}/static/index.html  
+   • Documentation:  http://{host}:{port}/prompts.md  
    • Swagger UI:     http://{host}:{port}/docs
 
 🤖 For AI Assistants:
