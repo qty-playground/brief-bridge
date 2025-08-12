@@ -290,7 +290,7 @@ submit_command_result() {
     fi
     
     # Write JSON to temp file
-    cat > "$json_file" << EOF
+    cat > "$json_file" << 'RESULT_EOF'
 {
   "command_id": "$command_id",
   "success": $success,
@@ -298,7 +298,7 @@ submit_command_result() {
   "error": $error_json,
   "execution_time": $execution_time
 }
-EOF
+RESULT_EOF
     
     # Submit using curl with @file
     local response
