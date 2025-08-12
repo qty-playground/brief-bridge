@@ -293,8 +293,8 @@ submit_command_result() {
         output_json="\"$(echo "$output" | sed 's/\\/\\\\/g; s/"/\\"/g')\""
     fi
     
-    # Write JSON to temp file
-    cat > "$json_file" << 'RESULT_EOF'
+    # Write JSON to temp file (without quotes to allow variable expansion)
+    cat > "$json_file" << RESULT_EOF
 {
   "command_id": "$command_id",
   "success": $success,
