@@ -180,6 +180,7 @@ Test.MainScript.ps1      # Comprehensive validation suite
 
 ### Client Installation
 - `GET /install.ps1` - PowerShell client installation script
+- `GET /install-modular.ps1` - Enhanced modular PowerShell client with better code organization
 - `GET /install.sh` - Bash client installation script
 
 ---

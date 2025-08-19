@@ -88,6 +88,89 @@ if ($DebugMode -eq "true") {{
         
         return install_script
     
+    def generate_modular_powershell_script(self, client_id: Optional[str] = None, 
+                                         client_name: Optional[str] = None,
+                                         poll_interval: int = 5,
+                                         idle_timeout_minutes: int = 10,
+                                         debug: bool = False) -> str:
+        """Generate Modular PowerShell install script with enhanced functionality"""
+        
+        # Read the modular PowerShell client script
+        script_content = self._get_modular_powershell_client_base()
+        
+        # Generate client ID logic
+        if client_id:
+            client_id_logic = f'$ClientId = "{client_id}"'
+        else:
+            client_id_logic = '''# Auto-detect client ID based on platform
+if ($env:COMPUTERNAME) {
+    $ClientId = $env:COMPUTERNAME
+} elseif ($env:HOSTNAME) {
+    $ClientId = $env:HOSTNAME  
+} elseif ($env:USER) {
+    $ClientId = "$env:USER-$(Get-Random -Maximum 9999)"
+} else {
+    $ClientId = "pwsh-modular-client-$(Get-Random -Maximum 9999)"
+}'''
+
+        # Generate enhanced install wrapper script
+        install_script = f"""
+# Brief Bridge One-Click Modular PowerShell Installer
+# Auto-generated from {self.server_url}
+# Enhanced with modular architecture and built-in functions
+
+Write-Host "=== Brief Bridge Modular Client Installer ===" -ForegroundColor Green
+Write-Host "This is the enhanced modular version with reusable functions" -ForegroundColor Cyan
+Write-Host "Downloading and starting modular client..." -ForegroundColor Cyan
+
+# Default parameters
+$ServerUrl = "{self.server_url}"
+$ClientName = "{client_name or 'Modular PowerShell Client'}"
+$PollInterval = {poll_interval}
+$DebugMode = ${str(debug).lower()}
+
+# Cross-platform client ID detection
+{client_id_logic}
+
+# Generate unique filename with UUID to avoid conflicts with multiple clients
+$ScriptUuid = [System.Guid]::NewGuid().ToString("N").Substring(0,8)
+
+# Download client script to temp location (cross-platform path)
+if ($IsLinux -or $IsMacOS) {{
+    $TempPath = "/tmp/BriefBridgeModularClient_$ScriptUuid.ps1"
+}} else {{
+    $TempPath = "$env:TEMP\\BriefBridgeModularClient_$ScriptUuid.ps1"
+}}
+Write-Host "Downloading modular client script to $TempPath" -ForegroundColor Yellow
+
+# Embedded modular client script content
+$ClientScript = @'
+{script_content}
+'@
+
+# Save client script
+$ClientScript | Out-File -FilePath $TempPath -Encoding UTF8
+
+# Detect PowerShell executable (pwsh on Linux/macOS, powershell on Windows)
+$PowerShellExe = "powershell"
+if (Get-Command "pwsh" -ErrorAction SilentlyContinue) {{
+    $PowerShellExe = "pwsh"
+}}
+Write-Host "Using PowerShell executable: $PowerShellExe" -ForegroundColor Yellow
+
+# Execute modular client
+Write-Host "Starting Brief Bridge modular client..." -ForegroundColor Green
+Write-Host "Enhanced features: Modular functions, Built-in commands, Better error handling" -ForegroundColor Magenta
+
+if ($DebugMode -eq "true") {{
+    & $PowerShellExe -ExecutionPolicy Bypass -File $TempPath -ServerUrl $ServerUrl -ClientId $ClientId -ClientName "$ClientName" -PollInterval $PollInterval -IdleTimeoutMinutes {idle_timeout_minutes} -DebugMode
+}} else {{
+    & $PowerShellExe -ExecutionPolicy Bypass -File $TempPath -ServerUrl $ServerUrl -ClientId $ClientId -ClientName "$ClientName" -PollInterval $PollInterval -IdleTimeoutMinutes {idle_timeout_minutes}
+}}
+"""
+        
+        return install_script
+    
     def generate_bash_script(self, client_id: Optional[str] = None, 
                            client_name: Optional[str] = None,
                            poll_interval: int = 5,
@@ -183,3 +266,17 @@ fi
                 return f.read()
         except FileNotFoundError:
             raise FileNotFoundError(f"PowerShell client template not found at {template_path}")
+    
+    def _get_modular_powershell_client_base(self) -> str:
+        """Get the modular PowerShell client script content"""
+        template_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), 
+            "templates", 
+            "powershell_modular_client.ps1"
+        )
+        
+        try:
+            with open(template_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Modular PowerShell client template not found at {template_path}")
