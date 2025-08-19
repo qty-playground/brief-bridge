@@ -1,0 +1,213 @@
+# Brief Bridge PowerShell Client - 新版 install.ps1 流程範例
+# 展示如何使用設計的 21 個 functions
+
+param(
+    [string]$ServerUrl = "https://3d22d16730a6.ngrok-free.app",
+    [string]$ClientName = "PowerShell Client",
+    [int]$PollInterval = 5,
+    [int]$IdleTimeoutMinutes = 10,
+    [switch]$DebugMode
+)
+
+# =============================================================================
+# 這裡會有 22 個 function 的定義 (實際實作)
+# function New-ClientContext { ... }
+# function Get-ClientId { ... }
+# function Invoke-HttpRequest { ... }
+# function Register-Client { ... }
+# ... 等等
+# =============================================================================
+
+Write-ClientOutput "Brief Bridge Client 啟動中..." "[ INIT ]"
+
+# ==========================================
+# 階段 1: 初始化和註冊
+# ==========================================
+
+# 1.1 取得 Client ID
+$clientId = Get-ClientId
+Write-ClientLog "偵測到 Client ID: $clientId" "INFO" "Cyan"
+
+# 1.2 建立 Context 物件
+$context = New-ClientContext -ServerUrl $ServerUrl -ClientId $clientId
+Write-ClientLog "Context 物件建立完成" "INFO" "Cyan"
+
+# 1.3 註冊 Client
+$registered = Register-Client -Context $context -ClientName $ClientName
+if (-not $registered) {
+    Write-ClientError "Client 註冊失敗，程式結束"
+    exit 1
+}
+Write-ClientOutput "Client 註冊成功" "[ REGISTER ]"
+
+# 1.4 初始化生命週期變數
+$lastCommandTime = Get-Date
+$consecutive404Count = 0
+$consecutiveErrorCount = 0
+$terminateRequested = $false
+$idleTimeoutSeconds = $IdleTimeoutMinutes * 60
+
+Write-ClientOutput "開始主要 Polling 迴圈..." "[ START ]"
+Write-ClientLog "Polling 間隔: $PollInterval 秒, Idle Timeout: $IdleTimeoutMinutes 分鐘" "INFO" "Yellow"
+
+# ==========================================
+# 階段 2: 主要運行迴圈
+# ==========================================
+
+try {
+    while ($true) {
+        try {
+            # 2.1 檢查終止條件 (階段三功能)
+            $terminationStatus = Test-ShouldTerminate -LastCommandTime $lastCommandTime -Consecutive404Count $consecutive404Count -ConsecutiveErrorCount $consecutiveErrorCount -TerminateRequested $terminateRequested
+            
+            if ($terminationStatus.shouldTerminate) {
+                Write-ClientLog "終止條件觸發: $($terminationStatus.reason)" "WARN" "Yellow"
+                break
+            }
+
+            # 2.2 輪詢待執行指令
+            $command = Get-PendingCommand -Context $context
+            
+            if ($command) {
+                Write-ClientLog "收到指令: $($command.command_id)" "INFO" "Magenta"
+                $consecutiveErrorCount = 0  # 重置錯誤計數
+                $consecutive404Count = 0    # 重置 404 計數
+                
+                # 2.3 檢查是否為終止指令 (階段三功能)
+                if (Test-TerminateCommand -CommandContent $command.command_content) {
+                    Write-ClientLog "收到終止指令，準備優雅關閉" "WARN" "Yellow"
+                    $terminateRequested = $true
+                    
+                    # 回報終止指令執行結果
+                    $terminateResult = New-ExecutionResult -Success $true -Output "Client 收到終止指令，正在優雅關閉" -ExecutionTime 0.1
+                    Submit-CommandResult -Context $context -CommandId $command.command_id -Result $terminateResult
+                    break
+                }
+                
+                # ==========================================
+                # 階段 3: Command Execution
+                # ==========================================
+                
+                # 3.1 執行指令
+                $executionResult = Invoke-PowerShellCommand -Command $command.command_content -TimeoutSeconds $command.timeout
+                
+                # 3.2 更新最後指令時間
+                $lastCommandTime = Get-Date
+                
+                # 3.3 格式化結果 (階段三功能)
+                if ($DebugMode) {
+                    $formattedResult = Format-CommandResult -CommandId $command.command_id -ExecutionResult $executionResult -Format "JSON"
+                    Write-ClientLog "執行結果: $formattedResult" "DEBUG" "DarkGray"
+                }
+                
+                # ==========================================
+                # 階段 4: 結果回傳
+                # ==========================================
+                
+                # 4.1 回傳指令結果
+                $submitted = Submit-CommandResult -Context $context -CommandId $command.command_id -Result $executionResult
+                
+                if ($submitted) {
+                    Write-ClientOutput "指令 $($command.command_id) 執行完成" "[ EXEC ]"
+                } else {
+                    Write-ClientError "指令結果回傳失敗，但繼續運行"
+                }
+                
+                # 4.2 如果有大型結果需要檔案上傳 (階段二功能)
+                if ($executionResult.output -and $executionResult.output.Length -gt 10000) {
+                    Write-ClientLog "結果較大，嘗試檔案上傳" "INFO" "Cyan"
+                    $fileId = Submit-ResultFile -Context $context -Data $executionResult
+                    if ($fileId) {
+                        Write-ClientOutput "大型結果已上傳，File ID: $fileId" "[ UPLOAD ]"
+                    }
+                }
+                
+            } else {
+                # 無指令時的處理
+                $consecutiveErrorCount = 0  # 重置錯誤計數
+                
+                # 檢查 idle timeout (階段三功能)
+                $timeoutStatus = Test-IdleTimeout -LastCommandTime $lastCommandTime -IdleTimeoutSeconds $idleTimeoutSeconds
+                if ($timeoutStatus.isTimeout) {
+                    Write-ClientLog "Idle timeout 達到 $($timeoutStatus.idleSeconds) 秒" "WARN" "Yellow"
+                    break
+                }
+                
+                if ($DebugMode) {
+                    Write-ClientLog "無待執行指令，Idle: $($timeoutStatus.idleSeconds)/$idleTimeoutSeconds 秒" "DEBUG" "DarkGray"
+                }
+            }
+            
+        } catch {
+            $consecutiveErrorCount++
+            Write-ClientError "Polling 錯誤 ($consecutiveErrorCount/5): $($_.Exception.Message)"
+            
+            # 階段三：智慧重試處理
+            $retryDecision = Handle-RetryableError -Exception $_.Exception -RetryCount $consecutiveErrorCount -MaxRetries 5
+            
+            if (-not $retryDecision.shouldRetry) {
+                Write-ClientError "達到最大重試次數，程式結束"
+                break
+            }
+            
+            if ($retryDecision.delaySeconds -gt 0) {
+                Write-ClientLog "等待 $($retryDecision.delaySeconds) 秒後重試" "WARN" "Yellow"
+                Start-Sleep -Seconds $retryDecision.delaySeconds
+            }
+        }
+        
+        # 等待下次 polling
+        Start-Sleep -Seconds $PollInterval
+    }
+    
+} catch {
+    Write-ClientError "主迴圈發生致命錯誤: $($_.Exception.Message)"
+} finally {
+    # ==========================================
+    # 階段 5: 清理和關閉
+    # ==========================================
+    
+    Write-ClientLog "開始清理程序..." "INFO" "Yellow"
+    
+    # 5.1 清理暫存檔案 (階段二功能)
+    $deletedCount = Clear-ClientTempFiles
+    if ($deletedCount -gt 0) {
+        Write-ClientLog "已清理 $deletedCount 個暫存檔案" "INFO" "Cyan"
+    }
+    
+    # 5.2 顯示生命週期狀態 (階段三功能)
+    if ($DebugMode) {
+        $lifecycleStatus = Get-ClientLifecycleStatus
+        Write-ClientLog "運行統計: 運行時間 $($lifecycleStatus.uptime), 執行指令 $($lifecycleStatus.commandsExecuted) 個" "INFO" "Cyan"
+    }
+    
+    # 5.3 最終輸出
+    Write-ClientOutput "Brief Bridge Client 已優雅關閉" "[ EXIT ]"
+}
+
+# =============================================================================
+# 使用範例：下載的 script 如何使用這些 functions
+# =============================================================================
+
+<#
+下載的 script 範例 (大幅簡化):
+
+# 傳統寫法 (現有):
+Invoke-WebRequest -Uri "TUNNEL_URL/files/download/FILE_ID_PSM1" -OutFile "Module.psm1"
+Invoke-WebRequest -Uri "TUNNEL_URL/files/download/FILE_ID_PSD1" -OutFile "Module.psd1"
+Import-Module ".\Module.psd1" -Force
+$results = Test-ModuleCompatibility
+$resultsJson = $results | ConvertTo-Json -Depth 3
+$resultsJson | Out-File "test_results.json"
+$uploadResult = Invoke-RestMethod -Uri "TUNNEL_URL/files/upload" -Method POST -Form @{...}
+
+# 新寫法 (使用 functions 和 context):
+Invoke-ClientDownload -Context $context -FileId "FILE_ID_PSM1" -OutputPath "Module.psm1"
+Invoke-ClientDownload -Context $context -FileId "FILE_ID_PSD1" -OutputPath "Module.psd1"
+Import-Module ".\Module.psd1" -Force
+$results = Test-ModuleCompatibility
+Submit-ResultFile -Context $context -Data $results
+
+# 從 15 行減少到 5 行，錯誤處理全部內建！
+# Context 物件統一管理 ServerUrl 和 ClientId！
+#>
