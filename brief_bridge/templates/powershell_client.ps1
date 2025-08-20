@@ -205,8 +205,45 @@ function Submit-CommandResult {
         return $true
     }
     catch {
+        $statusCode = $null
+        if ($_.Exception.Response) {
+            $statusCode = [int]$_.Exception.Response.StatusCode
+        }
+        
         Write-Error "Failed to submit result for command $CommandId`: $($_.Exception.Message)"
-        return $false
+        
+        # For ANY error (4xx, 5xx, network issues), submit a hardcoded error result to let AI know something is broken
+        Write-Host "[RESULT] Submit failed, sending hardcoded error result" -ForegroundColor Red
+        
+        try {
+            # Determine error message based on status code
+            $errorMessage = if ($statusCode) {
+                "CLIENT_SUBMIT_ERROR: HTTP $statusCode - Failed to submit original result to server. Original command may have executed successfully but result submission failed."
+            } else {
+                "CLIENT_SUBMIT_ERROR: Network/Connection failure - Failed to submit original result to server. Original command may have executed successfully but result submission failed."
+            }
+            
+            $errorBody = @{
+                command_id = $CommandId
+                success = $false
+                output = ""
+                error = $errorMessage
+                execution_time = $Result.execution_time
+            }
+            
+            # Try once more with the error body, no retries
+            $headers = @{ "Content-Type" = "application/json" }
+            $jsonBody = $errorBody | ConvertTo-Json -Depth 10
+            $errorResponse = Invoke-RestMethod -Uri "$ApiBase/commands/result" -Method "POST" -Body $jsonBody -Headers $headers -TimeoutSec 30
+            
+            Write-Host "[RESULT] Successfully submitted hardcoded error for command $CommandId" -ForegroundColor Yellow
+            return $true
+        }
+        catch {
+            Write-Error "Failed to submit hardcoded error result for command $CommandId`: $($_.Exception.Message)"
+            # At this point, we've tried everything we can. Return false so the main loop can handle it.
+            return $false
+        }
     }
 }
 
