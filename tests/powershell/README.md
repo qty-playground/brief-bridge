@@ -1,6 +1,6 @@
 # PowerShell Testing Package
 
-This package contains PowerShell-specific tests for the Brief Bridge Editor, isolated from general project tests to avoid unnecessary dependencies.
+This package contains PowerShell-specific tests for the Brief Bridge project, isolated from general project tests to avoid unnecessary dependencies.
 
 ## Structure
 
@@ -9,7 +9,8 @@ tests/powershell/
 ├── __init__.py              # Package initialization
 ├── conftest.py              # PowerShell-specific fixtures
 ├── test_container.py        # Basic PowerShell container tests
-├── test_module.py           # Brief Bridge Editor PowerShell module tests
+├── test_module.py           # PowerShell functionality and file mounting tests
+├── test_script.ps1          # Sample PowerShell script for testing
 └── README.md               # This file
 ```
 
@@ -49,10 +50,11 @@ PowerShell tests require additional dependencies that general tests don't need:
 - Container environment validation
 
 ### Module Tests (`test_module.py`)
-- Brief Bridge Editor PowerShell module testing
-- Module import and execution
-- Cmdlet functionality verification
-- Pester framework integration tests
+- Basic PowerShell functionality testing
+- Variable and object operations  
+- File mounting and volume access
+- PowerShell script execution via mounted files
+- Container environment validation
 
 ## Fixtures
 

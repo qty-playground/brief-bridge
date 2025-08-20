@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Build PowerShell Container Image for Brief Bridge Editor Testing
+# Build PowerShell Container Image for Brief Bridge Testing
 # This script builds a clean PowerShell container image for running tests
 
 set -e  # Exit on any error
