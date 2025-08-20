@@ -53,3 +53,15 @@ Feature: Tunnel Setup
         }
       }
       """
+
+  Scenario: Get service endpoint when tunnel is active
+    Given tunnel is already setup and running
+    When administrator queries service endpoint
+    Then response should contain service endpoint URL
+    And response should show active provider information
+
+  Scenario: Get service endpoint when no tunnel is configured
+    Given no tunnel is configured
+    When administrator queries service endpoint
+    Then response should indicate no active service endpoint
+    And response should show inactive status

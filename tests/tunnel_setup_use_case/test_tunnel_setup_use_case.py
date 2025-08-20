@@ -11,11 +11,13 @@ from . import given_administrator_has_cloudflare_account
 from . import given_tunnel_is_already_setup
 from . import given_tunnel_is_running
 from . import given_system_configured_with_providers
+from . import given_no_tunnel_is_configured
 from . import when_administrator_starts_server_with_tunnel
 from . import when_administrator_calls_tunnel_setup_api
 from . import when_administrator_sets_up_custom_tunnel
 from . import when_administrator_sets_up_cloudflare_tunnel
 from . import when_administrator_queries_tunnel_status
+from . import when_administrator_queries_service_endpoint
 from . import when_tunnel_connection_is_interrupted
 from . import when_primary_tunnel_service_fails
 from . import then_system_should_start_ngrok_tunnel
@@ -33,6 +35,10 @@ from . import then_system_should_attempt_reconnection
 from . import then_if_reconnection_fails_should
 from . import then_system_should_switch_to_next_service
 from . import then_update_all_related_urls
+from . import then_response_should_contain_service_endpoint_url
+from . import then_response_should_show_active_provider_information
+from . import then_response_should_indicate_no_active_service_endpoint
+from . import then_response_should_show_inactive_status
 
 # Load all scenarios from feature file
 scenarios('story.feature')
@@ -86,6 +92,12 @@ def given_system_configured_with_multiple_providers(context, docstring):
     context.phase = BDDPhase.GIVEN
     given_system_configured_with_providers.invoke(context, providers_config=docstring)
 
+@given('no tunnel is configured')
+def given_no_tunnel_configured(context):
+    """Delegate to given_no_tunnel_is_configured step module"""
+    context.phase = BDDPhase.GIVEN
+    given_no_tunnel_is_configured.invoke(context)
+
 # When step wrappers
 @when('administrator starts server with --enable-tunnel parameter')
 def when_admin_starts_server_with_tunnel_param(context):
@@ -116,6 +128,12 @@ def when_admin_queries_tunnel_status(context):
     """Delegate to when_administrator_queries_tunnel_status step module"""
     context.phase = BDDPhase.WHEN
     when_administrator_queries_tunnel_status.invoke(context)
+
+@when('administrator queries service endpoint')
+def when_admin_queries_service_endpoint(context):
+    """Delegate to when_administrator_queries_service_endpoint step module"""
+    context.phase = BDDPhase.WHEN
+    when_administrator_queries_service_endpoint.invoke(context)
 
 @when('tunnel connection is interrupted')
 def when_tunnel_connection_interrupted(context):
@@ -219,3 +237,27 @@ def then_updates_all_related_urls(context):
     """Delegate to then_update_all_related_urls step module"""
     context.phase = BDDPhase.THEN
     then_update_all_related_urls.invoke(context)
+
+@then('response should contain service endpoint URL')
+def then_response_contains_service_endpoint_url(context):
+    """Delegate to then_response_should_contain_service_endpoint_url step module"""
+    context.phase = BDDPhase.THEN
+    then_response_should_contain_service_endpoint_url.invoke(context)
+
+@then('response should show active provider information')
+def then_response_shows_active_provider_information(context):
+    """Delegate to then_response_should_show_active_provider_information step module"""
+    context.phase = BDDPhase.THEN
+    then_response_should_show_active_provider_information.invoke(context)
+
+@then('response should indicate no active service endpoint')
+def then_response_indicates_no_active_service_endpoint(context):
+    """Delegate to then_response_should_indicate_no_active_service_endpoint step module"""
+    context.phase = BDDPhase.THEN
+    then_response_should_indicate_no_active_service_endpoint.invoke(context)
+
+@then('response should show inactive status')
+def then_response_shows_inactive_status(context):
+    """Delegate to then_response_should_show_inactive_status step module"""
+    context.phase = BDDPhase.THEN
+    then_response_should_show_inactive_status.invoke(context)

@@ -146,6 +146,32 @@ class TunnelSetupUseCase:
             return 0
         return int((datetime.now() - self.active_tunnel.created_at).total_seconds())
     
+    async def get_current_service_endpoint(self) -> Dict[str, Any]:
+        """Business rule: service.endpoint_discovery - get current active service endpoint for client connections"""
+        if not self.active_tunnel:
+            return self._build_inactive_service_endpoint_response()
+        
+        if not self._is_tunnel_active():
+            return self._build_inactive_service_endpoint_response()
+        
+        return self._build_active_service_endpoint_response()
+    
+    def _build_inactive_service_endpoint_response(self) -> Dict[str, Any]:
+        """Build response when no service endpoint is active"""
+        return {
+            "service_endpoint": None,
+            "provider": None,
+            "status": "inactive"
+        }
+    
+    def _build_active_service_endpoint_response(self) -> Dict[str, Any]:
+        """Build response with current active service endpoint"""
+        return {
+            "service_endpoint": self.active_tunnel.public_url,
+            "provider": self.active_tunnel.provider,
+            "status": "active"
+        }
+
     async def cleanup_all_tunnels(self) -> None:
         """Cleanup method to ensure all tunnels are properly stopped"""
         try:

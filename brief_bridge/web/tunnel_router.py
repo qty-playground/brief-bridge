@@ -57,6 +57,13 @@ class TunnelStatusResponse(BaseModel):
     )
 
 
+class ServiceEndpointResponse(BaseModel):
+    """Response schema for service endpoint query"""
+    service_endpoint: Optional[str] = Field(None, description="Current active service endpoint URL for client connections")
+    provider: Optional[str] = Field(None, description="Provider type if endpoint is active")
+    status: str = Field(description="Service endpoint status: 'active' or 'inactive'")
+
+
 @router.post("/setup", 
             response_model=TunnelSetupResponse,
             summary="Setup Tunnel",
@@ -98,5 +105,22 @@ async def get_tunnel_status(
         status = await tunnel_use_case.get_tunnel_status()
         
         return TunnelStatusResponse(**status)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/endpoint", 
+            response_model=ServiceEndpointResponse,
+            summary="Get Service Endpoint",
+            description="Get the current active service endpoint URL for client connections. Returns the URL regardless of provider type (ngrok, custom, etc.).",
+            tags=["tunnel"])
+async def get_service_endpoint(
+    tunnel_use_case: TunnelSetupUseCase = Depends(get_tunnel_setup_use_case)
+):
+    """Get current service endpoint for client connections"""
+    try:
+        endpoint_info = await tunnel_use_case.get_current_service_endpoint()
+        
+        return ServiceEndpointResponse(**endpoint_info)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
