@@ -23,6 +23,19 @@ Feature: Tunnel Setup
       }
       """
 
+  Scenario: Custom domain tunnel setup
+    Given administrator has custom domain and SSL certificate
+    When administrator sets up custom tunnel with:
+      """
+      {
+        "provider": "custom",
+        "public_url": "https://brief-bridge.example.com"
+      }
+      """
+    Then system should use provided URL
+    And should not start any tunnel service
+    And install URLs should use custom domain
+
   Scenario: Get current tunnel status
     Given tunnel is already setup and running
     When administrator queries tunnel status

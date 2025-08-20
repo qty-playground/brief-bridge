@@ -2,8 +2,8 @@
 from typing import Dict, Any, Optional
 from datetime import datetime
 import uuid
-from ..entities.tunnel import Tunnel
-from ..services.ngrok_manager import NgrokManager, create_ngrok_manager
+from brief_bridge.entities.tunnel import Tunnel
+from brief_bridge.services.ngrok_manager import NgrokManager, create_ngrok_manager
 
 
 class TunnelSetupUseCase:
@@ -45,7 +45,7 @@ class TunnelSetupUseCase:
     
     def _validate_provider(self, provider: str) -> None:
         """Validate that the provider is supported"""
-        supported_providers = ["ngrok"]
+        supported_providers = ["ngrok", "custom"]
         if provider not in supported_providers:
             raise ValueError(f"Unsupported provider: {provider}. Supported: {supported_providers}")
     
@@ -53,12 +53,25 @@ class TunnelSetupUseCase:
         """Generate public URL based on provider type"""
         if provider == "ngrok":
             return await self._generate_ngrok_url()
+        elif provider == "custom":
+            return self._extract_and_validate_custom_public_url(config)
         else:
             raise ValueError(f"URL generation not implemented for provider: {provider}")
     
     async def _generate_ngrok_url(self) -> str:
         """Generate ngrok tunnel URL using real ngrok manager"""
         return await self.ngrok_manager.start_tunnel()
+    
+    def _extract_and_validate_custom_public_url(self, config: Dict[str, Any]) -> str:
+        """Business rule: custom.url_validation - extract and validate custom public URL from configuration"""
+        public_url = config.get("public_url")
+        if not public_url:
+            raise ValueError("Custom provider requires 'public_url' in config")
+        
+        if not public_url.startswith(("http://", "https://")):
+            raise ValueError("Custom public_url must start with http:// or https://")
+        
+        return public_url.rstrip("/")
     
     
     def _create_and_activate_tunnel(self, provider: str, public_url: str, config: Dict[str, Any]) -> Tunnel:

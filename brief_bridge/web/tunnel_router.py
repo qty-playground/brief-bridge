@@ -11,7 +11,7 @@ router = APIRouter(prefix="/tunnel", tags=["tunnel"])
 class TunnelSetupRequest(BaseModel):
     """Request schema for tunnel setup"""
     provider: str = Field(
-        description="Tunnel provider name. Currently supported: 'ngrok'",
+        description="Tunnel provider name. Supported: 'ngrok', 'custom'",
         json_schema_extra={"example": "ngrok"}
     )
     auth_token: Optional[str] = Field(
@@ -20,7 +20,8 @@ class TunnelSetupRequest(BaseModel):
     )
     config: Optional[Dict[str, Any]] = Field(
         None,
-        description="Additional configuration options for the tunnel provider (optional)"
+        description="Additional configuration options for the tunnel provider. For 'custom' provider, requires 'public_url' field.",
+        json_schema_extra={"example": {"public_url": "https://example.com"}}
     )
 
 
@@ -59,7 +60,7 @@ class TunnelStatusResponse(BaseModel):
 @router.post("/setup", 
             response_model=TunnelSetupResponse,
             summary="Setup Tunnel",
-            description="Set up ngrok tunnel to enable remote client connections. Returns public URL and installation commands for remote clients.",
+            description="Set up tunnel to enable remote client connections. Supports ngrok and custom providers. Returns public URL and installation commands for remote clients.",
             tags=["tunnel"])
 async def setup_tunnel(
     request: TunnelSetupRequest,

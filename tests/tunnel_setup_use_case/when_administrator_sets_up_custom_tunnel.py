@@ -18,10 +18,11 @@ def invoke(ctx: ScenarioContext, request_body: str) -> None:
     request_data = json.loads(request_body)
     use_case = TunnelSetupUseCase()
     
-    # Execute custom tunnel setup
+    # Execute custom tunnel setup - extract config properly
+    config = {"public_url": request_data["public_url"]}
     result = asyncio.run(use_case.setup_tunnel(
         provider=request_data["provider"],
-        config=request_data
+        config=config
     ))
     
     ctx.custom_tunnel_response = result
