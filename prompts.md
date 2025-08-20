@@ -155,11 +155,58 @@ Test.MainScript.ps1      # Comprehensive validation suite
 
 ---
 
+## Service Endpoint Discovery
+
+Brief Bridge provides intelligent service endpoint management that automatically detects and manages connection URLs for client installations.
+
+### Key Concepts
+
+- **Service Endpoint**: The active URL that remote clients use to connect to Brief Bridge
+- **Provider Types**: 
+  - `ngrok`: AI-managed automatic tunnel setup
+  - `custom`: User-provided public URL for deployed services
+- **Status Management**: Active endpoints are preserved across sessions
+
+### Endpoint Discovery Workflow
+
+```bash
+# Always check current endpoint status first
+curl http://localhost:8000/tunnel/endpoint
+
+# Response formats:
+# Active: {"service_endpoint": "https://abc123.ngrok.io", "provider": "ngrok", "status": "active"}
+# Inactive: {"service_endpoint": null, "provider": null, "status": "inactive"}
+```
+
+### Decision Logic
+- **Status "active"**: Use existing `service_endpoint` for all client installation instructions
+- **Status "inactive"**: Configure new endpoint using tunnel setup API
+- **Provider flexibility**: Supports both automated (ngrok) and manual (custom) configurations
+
+### Provider Configuration Examples
+
+**Ngrok Provider (Automatic)**:
+```bash
+curl -X POST http://localhost:8000/tunnel/setup \
+  -H "Content-Type: application/json" \
+  -d '{"provider": "ngrok"}'
+```
+
+**Custom Provider (Manual)**:
+```bash
+curl -X POST http://localhost:8000/tunnel/setup \
+  -H "Content-Type: application/json" \
+  -d '{"provider": "custom", "config": {"public_url": "https://your-domain.com"}}'
+```
+
+---
+
 ## API Reference
 
 ### Tunnel Configuration
-- `POST /tunnel/setup` - Initialize secure tunnel (Required: `{"provider": "ngrok"}`)
+- `POST /tunnel/setup` - Initialize secure tunnel (Supports: ngrok, custom providers)
 - `GET /tunnel/status` - Retrieve tunnel status and public endpoint
+- `GET /tunnel/endpoint` - Get current service endpoint for client connections
 
 ### Client Management
 - `POST /clients/register` - Register remote client (Required: `{"client_id": "string"}`)
@@ -189,10 +236,17 @@ Test.MainScript.ps1      # Comprehensive validation suite
 ### Initial Setup Sequence
 
 ```bash
-# 1. Configure secure tunnel
+# 0. Check current service endpoint status
+curl http://localhost:8000/tunnel/endpoint
+# Response: {"service_endpoint": "https://abc123.ngrok.io", "provider": "ngrok", "status": "active"}
+# If status is "active", skip to step 2. If "inactive", continue to step 1.
+
+# 1. Configure secure tunnel (if needed)
 curl -X POST http://localhost:8000/tunnel/setup \
   -H "Content-Type: application/json" \
   -d '{"provider": "ngrok"}'
+# Alternative for custom endpoint:
+# -d '{"provider": "custom", "config": {"public_url": "https://your-domain.com"}}'
 
 # 2. Verify client connectivity
 curl http://localhost:8000/clients/
