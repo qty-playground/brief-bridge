@@ -9,6 +9,13 @@ param(
     [switch]$DebugMode
 )
 
+# Set working directory to script location for session isolation
+$WorkingDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+if ($WorkingDir) {
+    Set-Location $WorkingDir
+    Write-Host "Working directory: $WorkingDir" -ForegroundColor Cyan
+}
+
 # Configuration
 $ApiBase = "$ServerUrl"
 $MaxRetries = 3
@@ -346,5 +353,19 @@ catch {
 }
 finally {
     Write-Host "[LIFECYCLE] Client shutting down..." -ForegroundColor Yellow
+    
+    # Clean up working directory if it was created for this session
+    if ($WorkingDir -and $WorkingDir -match "BriefBridge_Session_") {
+        try {
+            Write-Host "[CLEANUP] Removing session directory: $WorkingDir" -ForegroundColor Yellow
+            Set-Location $env:TEMP  # Move out of directory before deletion
+            Remove-Item -Path $WorkingDir -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Host "[CLEANUP] Session directory cleaned up" -ForegroundColor Green
+        }
+        catch {
+            Write-Warning "[CLEANUP] Failed to remove session directory: $($_.Exception.Message)"
+        }
+    }
+    
     Write-Host "Goodbye!" -ForegroundColor Green
 }

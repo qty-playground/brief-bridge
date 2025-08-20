@@ -51,15 +51,22 @@ $DebugMode = ${str(debug).lower()}
 # Cross-platform client ID detection
 {client_id_logic}
 
-# Generate unique filename with UUID to avoid conflicts with multiple clients
-$ScriptUuid = [System.Guid]::NewGuid().ToString("N").Substring(0,8)
+# Generate unique session ID for working directory
+$SessionId = [System.Guid]::NewGuid().ToString("N").Substring(0,8)
 
-# Download client script to temp location (cross-platform path)
+# Create working session directory in temp (cross-platform path)
 if ($IsLinux -or $IsMacOS) {{
-    $TempPath = "/tmp/BriefBridgeClient_$ScriptUuid.ps1"
+    $WorkingDir = "/tmp/BriefBridge_Session_$SessionId"
+    $TempPath = "$WorkingDir/BriefBridgeClient.ps1"
 }} else {{
-    $TempPath = "$env:TEMP\\BriefBridgeClient_$ScriptUuid.ps1"
+    $WorkingDir = "$env:TEMP\\BriefBridge_Session_$SessionId"
+    $TempPath = "$WorkingDir\\BriefBridgeClient.ps1"
 }}
+
+# Create working directory
+Write-Host "Creating working session directory: $WorkingDir" -ForegroundColor Yellow
+New-Item -ItemType Directory -Force -Path $WorkingDir | Out-Null
+
 Write-Host "Downloading client script to $TempPath" -ForegroundColor Yellow
 
 # Embedded client script content
